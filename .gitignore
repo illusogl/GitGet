@@ -1,0 +1,79 @@
+# ===== .NET Build Output =====
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.dll
+*.exe
+*.pdb
+*.ilk
+*.exp
+*.log
+*.tmp
+*.db
+*.db-shm
+*.db-wal
+
+# ===== NuGet =====
+packages/
+*.nupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/repositories.config
+*.nuget.props
+*.nuget.targets
+
+# ===== Visual Studio =====
+.vs/
+*.sln.docstates
+*.csproj.user
+*.vbproj.user
+*.fsproj.user
+_ReSharper*/
+*.resharper
+*.resharper.user
+[Tt]est[Rr]esult*/
+[Bb]uild/
+
+# ===== VS Code =====
+.vscode/
+*.code-workspace
+
+# ===== Rider / JetBrains =====
+.idea/
+*.sln.iml
+
+# ===== macOS / Linux =====
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ===== Environment =====
+*.env
+*.env.local
+*.env.*.local
+appsettings.*.json
+!appsettings.json
+!appsettings.Development.json
+
+# ===== GitGet Specific =====
+# User tokens and credentials
+token.enc
+tokens.json
+secrets.json
+
+# Local app data (runtime generated)
+%APPDATA%/GitGet/
+*.db
+
+# Download output (user downloads)
+downloads/
+
+# Configuration with secrets
+appsettings.Secret.json
+client_secret.json
+github_oauth.json
