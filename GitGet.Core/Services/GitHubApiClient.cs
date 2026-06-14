@@ -1,5 +1,3 @@
-using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using GitGet.Core.Interfaces;
@@ -9,106 +7,149 @@ namespace GitGet.Core.Services;
 
 public class GitHubApiClient : IGitHubApiClient
 {
-    private readonly HttpClient _httpClient;
-    private int _remainingRateLimit = 60; // Default unauthenticated limit
-    private DateTime? _rateLimitResetAt;
+    private readonly INodeScriptRunner _scriptRunner;
 
-    public int RemainingRateLimit => _remainingRateLimit;
-    public DateTime? RateLimitResetAt => _rateLimitResetAt;
+    public int RemainingRateLimit { get; private set; } = 60;
+    public DateTime? RateLimitResetAt { get; private set; }
 
-    public GitHubApiClient(HttpClient httpClient)
+    public GitHubApiClient(INodeScriptRunner scriptRunner)
     {
-        _httpClient = httpClient;
+        _scriptRunner = scriptRunner;
     }
 
     public async Task<List<Repository>> SearchRepositoriesAsync(
         string query, string? language = null, string sort = "stars",
         int page = 1, int perPage = 20, CancellationToken ct = default)
     {
-        var q = language != null ? $"{query}+language:{Uri.EscapeDataString(language)}" : query;
-        var url = $"search/repositories?q={Uri.EscapeDataString(q)}&sort={sort}&order=desc&page={page}&per_page={perPage}";
+        var q = language != null ? $"{query}+language:{language}" : query;
+        var args = new[] { "GET", "/search/repositories",
+            JsonSerializer.Serialize(new { q, sort, order = "desc", page, per_page = perPage }), "" };
 
-        var response = await SendRequestAsync(url, ct);
-        if (!response.IsSuccessStatusCode)
+        try
+        {
+            var json = await _scriptRunner.RunScriptAsync(args, ct);
+            var searchResult = JsonSerializer.Deserialize<SearchResult>(json);
+            UpdateRateLimit(json);
+
+            var items = searchResult?.Items ?? new();
+            return items.Select(item => MapRepository(item)).ToList();
+        }
+        catch
+        {
             return new List<Repository>();
-
-        var json = await response.Content.ReadFromJsonAsync<SearchResult>(cancellationToken: ct);
-        return json?.Items?.Select(MapRepository).ToList() ?? new List<Repository>();
+        }
     }
 
     public async Task<Repository?> GetRepositoryAsync(string owner, string repo, CancellationToken ct = default)
     {
-        var url = $"repos/{owner}/{repo}";
-        var response = await SendRequestAsync(url, ct);
+        var args = new[] { "GET", $"/repos/{owner}/{repo}", "{}", "" };
 
-        if (response.StatusCode == HttpStatusCode.NotFound)
+        try
+        {
+            var json = await _scriptRunner.RunScriptAsync(args, ct);
+            UpdateRateLimit(json);
+            var element = JsonDocument.Parse(json).RootElement;
+            return MapRepository(element);
+        }
+        catch
+        {
             return null;
-        if (!response.IsSuccessStatusCode)
-            return null;
-
-        var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
-        return MapRepository(json);
+        }
     }
 
     public async Task<List<Release>> GetReleasesAsync(
         string owner, string repo, int page = 1, int perPage = 30, CancellationToken ct = default)
     {
-        var url = $"repos/{owner}/{repo}/releases?page={page}&per_page={perPage}";
-        var response = await SendRequestAsync(url, ct);
+        var args = new[] { "GET", $"/repos/{owner}/{repo}/releases",
+            JsonSerializer.Serialize(new { page, per_page = perPage }), "" };
 
-        if (!response.IsSuccessStatusCode)
+        try
+        {
+            var json = await _scriptRunner.RunScriptAsync(args, ct);
+            UpdateRateLimit(json);
+            var raw = JsonDocument.Parse(json).RootElement;
+
+            var releases = new List<Release>();
+            foreach (var item in raw.EnumerateArray())
+            {
+                releases.Add(MapRelease(item));
+            }
+            return releases;
+        }
+        catch
+        {
             return new List<Release>();
-
-        var json = await response.Content.ReadFromJsonAsync<List<JsonElement>>(cancellationToken: ct);
-        return json?.Select(MapRelease).ToList() ?? new List<Release>();
+        }
     }
 
     public async Task<List<Repository>> GetStarredReposAsync(
         string username, int page = 1, int perPage = 50, CancellationToken ct = default)
     {
-        var url = $"users/{username}/starred?page={page}&per_page={perPage}";
-        var response = await SendRequestAsync(url, ct);
+        var args = new[] { "GET", $"/users/{username}/starred",
+            JsonSerializer.Serialize(new { page, per_page = perPage }), "" };
 
-        if (!response.IsSuccessStatusCode)
+        try
+        {
+            var json = await _scriptRunner.RunScriptAsync(args, ct);
+            UpdateRateLimit(json);
+            var raw = JsonDocument.Parse(json).RootElement;
+
+            var repos = new List<Repository>();
+            foreach (var item in raw.EnumerateArray())
+            {
+                repos.Add(MapRepository(item));
+            }
+            return repos;
+        }
+        catch
+        {
             return new List<Repository>();
-
-        var json = await response.Content.ReadFromJsonAsync<List<JsonElement>>(cancellationToken: ct);
-        return json?.Select(MapRepository).ToList() ?? new List<Repository>();
+        }
     }
 
     public async Task<GitHubUser?> GetUserAsync(CancellationToken ct = default)
     {
-        var response = await SendRequestAsync("user", ct);
+        var args = new[] { "GET", "/user", "{}", "" };
 
-        if (!response.IsSuccessStatusCode)
-            return null;
-
-        var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
-        return MapUser(json);
-    }
-
-    private async Task<HttpResponseMessage> SendRequestAsync(string relativeUrl, CancellationToken ct)
-    {
-        var request = new HttpRequestMessage(HttpMethod.Get, relativeUrl);
-        var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
-
-        UpdateRateLimit(response);
-
-        return response;
-    }
-
-    private void UpdateRateLimit(HttpResponseMessage response)
-    {
-        if (response.Headers.TryGetValues("X-RateLimit-Remaining", out var remainingValues) &&
-            int.TryParse(remainingValues.FirstOrDefault(), out var remaining))
+        try
         {
-            _remainingRateLimit = remaining;
+            var json = await _scriptRunner.RunScriptAsync(args, ct);
+            UpdateRateLimit(json);
+            var element = JsonDocument.Parse(json).RootElement;
+            return MapUser(element);
         }
-
-        if (response.Headers.TryGetValues("X-RateLimit-Reset", out var resetValues) &&
-            long.TryParse(resetValues.FirstOrDefault(), out var resetUnix))
+        catch
         {
-            _rateLimitResetAt = DateTimeOffset.FromUnixTimeSeconds(resetUnix).UtcDateTime;
+            return null;
+        }
+    }
+
+    private void UpdateRateLimit(string rawJson)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(rawJson);
+            var root = doc.RootElement;
+
+            if (root.TryGetProperty("__rateLimit", out var rateLimit))
+            {
+                if (rateLimit.TryGetProperty("limit", out var limitProp) && limitProp.TryGetInt32(out var limit))
+                {
+                    // Store for reference (main field is remaining)
+                }
+                if (rateLimit.TryGetProperty("remaining", out var remainingProp) && remainingProp.TryGetInt32(out var remaining))
+                {
+                    RemainingRateLimit = remaining;
+                }
+                if (rateLimit.TryGetProperty("reset", out var resetProp) && resetProp.TryGetInt32(out var resetUnix))
+                {
+                    RateLimitResetAt = DateTimeOffset.FromUnixTimeSeconds(resetUnix).UtcDateTime;
+                }
+            }
+        }
+        catch
+        {
+            // Ignore parse errors in metadata
         }
     }
 
@@ -116,7 +157,7 @@ public class GitHubApiClient : IGitHubApiClient
     {
         return new Repository
         {
-            Id = item.GetProperty("id").GetInt64(),
+            Id = item.TryGetProperty("id", out var id) ? id.GetInt64() : 0,
             FullName = GetStringOrDefault(item, "full_name"),
             Name = GetStringOrDefault(item, "name"),
             Owner = item.TryGetProperty("owner", out var owner)
@@ -135,7 +176,7 @@ public class GitHubApiClient : IGitHubApiClient
             CreatedAt = TryParseDateTime(item, "created_at"),
             Topics = item.TryGetProperty("topics", out var topics)
                 ? topics.EnumerateArray().Select(t => t.GetString() ?? string.Empty).Where(t => !string.IsNullOrEmpty(t)).ToList()
-                : new List<string>(),
+                : new(),
             DefaultBranch = GetStringOrDefault(item, "default_branch", "main")
         };
     }
@@ -154,7 +195,7 @@ public class GitHubApiClient : IGitHubApiClient
             HtmlUrl = GetStringOrDefault(item, "html_url"),
             Assets = item.TryGetProperty("assets", out var assets)
                 ? assets.EnumerateArray().Select(MapAsset).ToList()
-                : new List<ReleaseAsset>()
+                : new()
         };
     }
 
@@ -177,7 +218,7 @@ public class GitHubApiClient : IGitHubApiClient
     {
         return new GitHubUser
         {
-            Id = item.GetProperty("id").GetInt64(),
+            Id = item.TryGetProperty("id", out var id) ? id.GetInt64() : 0,
             Login = GetStringOrDefault(item, "login"),
             Name = GetStringOrDefault(item, "name"),
             Email = GetStringOrDefault(item, "email"),
@@ -215,6 +256,6 @@ public class GitHubApiClient : IGitHubApiClient
         public int TotalCount { get; set; }
 
         [JsonPropertyName("items")]
-        public List<JsonElement>? Items { get; set; }
+        public List<JsonElement> Items { get; set; } = new();
     }
 }
