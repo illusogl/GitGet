@@ -1,0 +1,45 @@
+@using GitGet.Core.Models
+
+<div class="project-card" @onclick="OnClick">
+    <div class="card-header">
+        <span class="card-title">@Repo.FullName</span>
+    </div>
+    <div class="card-description">@Repo.Description</div>
+    <div class="card-meta">
+        <span>⭐ @FormatNumber(Repo.Stars)</span>
+        <span>⑂ @FormatNumber(Repo.Forks)</span>
+        @if (!string.IsNullOrEmpty(Repo.Language))
+        {
+            <span><span class="language-dot" style="background-color:@GetLanguageColor(Repo.Language)"></span> @Repo.Language</span>
+        }
+        <span>@FormatDate(Repo.UpdatedAt)</span>
+    </div>
+</div>
+
+@code {
+    [Parameter] public Repository Repo { get; set; } = default!;
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    private static string FormatNumber(int n) => n >= 1000 ? $"{(n / 1000.0):F1}k" : n.ToString();
+    private static string FormatDate(DateTime dt) => dt == DateTime.MinValue ? "" : $"{(DateTime.Now - dt).Days}天前";
+
+    private static string GetLanguageColor(string lang) => lang.ToLower() switch
+    {
+        "c#" => "#178600",
+        "python" => "#3572A5",
+        "javascript" => "#f1e05a",
+        "typescript" => "#3178c6",
+        "java" => "#b07219",
+        "go" => "#00ADD8",
+        "rust" => "#dea584",
+        "c++" => "#f34b7d",
+        "c" => "#555555",
+        "html" => "#e34c26",
+        "css" => "#563d7c",
+        "shell" => "#89e051",
+        "ruby" => "#701516",
+        "swift" => "#ffac45",
+        "kotlin" => "#A97BFF",
+        _ => "#8b949e"
+    };
+}
