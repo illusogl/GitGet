@@ -66,6 +66,7 @@ class Program
                     return new NodeScriptRunner(scriptPath);
                 })
                 .AddSingleton<IGitHubApiClient>(sp => new GitHubApiClient(sp.GetRequiredService<INodeScriptRunner>()))
+                .AddSingleton<ITrendingService, TrendingService>()
                 .AddSingleton<IDownloadService>(sp =>
                 {
                     var client = new HttpClient

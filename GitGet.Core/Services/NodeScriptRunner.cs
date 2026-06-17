@@ -39,26 +39,18 @@ public class NodeScriptRunner : INodeScriptRunner
             Arguments = $"\"{_scriptPath}\" {string.Join(" ", arguments.Select(EscapeArg))}",
             RedirectStandardOutput = true,
             RedirectStandardError = true,
+            StandardOutputEncoding = System.Text.Encoding.UTF8,
+            StandardErrorEncoding = System.Text.Encoding.UTF8,
             UseShellExecute = false,
             CreateNoWindow = true,
         };
 
         using var process = new Process { StartInfo = psi };
-        var output = new System.Text.StringBuilder();
-        var error = new System.Text.StringBuilder();
-
-        process.OutputDataReceived += (_, e) =>
-        {
-            if (e.Data != null) output.AppendLine(e.Data);
-        };
-        process.ErrorDataReceived += (_, e) =>
-        {
-            if (e.Data != null) error.AppendLine(e.Data);
-        };
-
         process.Start();
-        process.BeginOutputReadLine();
-        process.BeginErrorReadLine();
+
+        // Read synchronously (StandardOutputEncoding only works with direct reads)
+        var output = process.StandardOutput.ReadToEnd();
+        var error = process.StandardError.ReadToEnd();
 
         using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
@@ -79,7 +71,7 @@ public class NodeScriptRunner : INodeScriptRunner
                 $"Node.js script failed with exit code {process.ExitCode}: {error}");
         }
 
-        var result = output.ToString().Trim();
+        var result = output.Trim();
         if (string.IsNullOrWhiteSpace(result))
         {
             throw new InvalidOperationException(

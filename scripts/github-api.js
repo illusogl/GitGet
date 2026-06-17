@@ -73,9 +73,10 @@ async function main() {
 function httpRequest(options) {
   return new Promise((resolve, reject) => {
     const req = https.request(options, (res) => {
-      let data = "";
-      res.on("data", (chunk) => (data += chunk));
+      const chunks = [];
+      res.on("data", (chunk) => chunks.push(chunk));
       res.on("end", () => {
+        const data = Buffer.concat(chunks).toString("utf8");
         try {
           const parsed = JSON.parse(data);
 
