@@ -4,6 +4,7 @@
 @inject IGitHubApiClient GitHubClient
 @inject IAssetMatcherService Matcher
 @inject IDownloadService DownloadService
+@inject IGitGetSettings AppSettings
 @inject AppState AppState
 @inject NavigationManager Navigation
 
@@ -183,8 +184,7 @@ else
 
     private async Task DownloadAsset(ReleaseAsset asset, string repoFullName)
     {
-        var downloadDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+        var downloadDir = AppSettings.DownloadPath;
 
         var progress = new Progress<DownloadProgress>(p =>
         {

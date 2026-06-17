@@ -75,7 +75,10 @@ class Program
                         Timeout = TimeSpan.FromMinutes(10)
                     };
                     client.DefaultRequestHeaders.Add("User-Agent", "GitGet-WebUI/1.0");
-                    return new DownloadService(client, sp.GetRequiredService<ILocalDataStore>());
+                    return new DownloadService(
+                        client,
+                        sp.GetRequiredService<ILocalDataStore>(),
+                        sp.GetRequiredService<IGitGetSettings>());
                 });
             Log.Info("服务注册完成");
 

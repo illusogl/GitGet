@@ -4,6 +4,7 @@ using GitGet.Core.Interfaces;
 using GitGet.Core.Models;
 using GitGet.Core.Services;
 using Microsoft.Data.Sqlite;
+using Moq;
 
 namespace GitGet.Core.Tests.Services;
 
@@ -11,8 +12,8 @@ public class DownloadServiceTests : IDisposable
 {
     private readonly SqliteConnection _connection;
     private readonly ILocalDataStore _dataStore;
-    private readonly IDownloadService _downloadService;
     private readonly string _tempDir;
+    private readonly Mock<IGitGetSettings> _settingsMock;
 
     public DownloadServiceTests()
     {
@@ -20,13 +21,17 @@ public class DownloadServiceTests : IDisposable
         _dataStore = new LocalDataStore(_connection);
         _tempDir = Path.Combine(Path.GetTempPath(), "GitGet_Test_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_tempDir);
+
+        _settingsMock = new Mock<IGitGetSettings>();
+        _settingsMock.SetupGet(s => s.DownloadPath).Returns(_tempDir);
+        _settingsMock.SetupGet(s => s.MaxConcurrentDownloads).Returns(3);
     }
 
     private IDownloadService CreateDownloadService(TaskCompletionSource<HttpResponseMessage> tcs)
     {
         var handler = new DelayedHandler(tcs);
         var httpClient = new HttpClient(handler);
-        return new DownloadService(httpClient, _dataStore);
+        return new DownloadService(httpClient, _dataStore, _settingsMock.Object);
     }
 
     [Fact]
@@ -35,7 +40,6 @@ public class DownloadServiceTests : IDisposable
         await _dataStore.InitializeAsync();
         var tcs = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        // Complete immediately with empty body so test doesn't hang
         tcs.SetResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
         {
             Content = new ByteArrayContent(Array.Empty<byte>())
@@ -50,9 +54,6 @@ public class DownloadServiceTests : IDisposable
         task.Should().NotBeNull();
         task.FileName.Should().Be("test.exe");
         task.RepoFullName.Should().Be("test/repo");
-
-        // Status: Queued (initial) or later (background runs quickly)
-        // Just verify it was created with valid data
     }
 
     [Fact]
@@ -88,22 +89,17 @@ public class DownloadServiceTests : IDisposable
     {
         await _dataStore.InitializeAsync();
 
-        // Use a TCS that never completes to keep download "in progress"
         var tcs = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
         var svc = CreateDownloadService(tcs);
 
         var task = await svc.StartDownloadAsync(
             "https://example.com/test.exe", "test.exe", "test/repo", _tempDir);
 
-        // Give background task a moment to start waiting on semaphore
         await Task.Delay(100);
 
         await svc.CancelDownloadAsync(task.TaskId);
 
-        // Now complete the TCS so background task can exit cleanly
         tcs.TrySetCanceled();
-
-        // Give background task time to process cancellation
         await Task.Delay(100);
 
         var cancelled = await svc.GetTaskAsync(task.TaskId);
@@ -150,9 +146,6 @@ public class DownloadServiceTests : IDisposable
         }
     }
 
-    /// <summary>
-    /// HttpMessageHandler controlled by TaskCompletionSource for test synchronization.
-    /// </summary>
     private class DelayedHandler : HttpMessageHandler
     {
         private readonly TaskCompletionSource<HttpResponseMessage> _tcs;

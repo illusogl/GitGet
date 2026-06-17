@@ -9,14 +9,20 @@ public class DownloadService : IDownloadService
 {
     private readonly HttpClient _httpClient;
     private readonly ILocalDataStore _dataStore;
+    private readonly IGitGetSettings _settings;
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _activeDownloads = new();
-    private readonly SemaphoreSlim _concurrencyLimit = new(3);
+    private readonly SemaphoreSlim _concurrencyLimit;
 
-    public DownloadService(HttpClient httpClient, ILocalDataStore dataStore)
+    public DownloadService(HttpClient httpClient, ILocalDataStore dataStore, IGitGetSettings settings)
     {
         _httpClient = httpClient;
         _dataStore = dataStore;
+        _settings = settings;
+        _concurrencyLimit = new SemaphoreSlim(settings.MaxConcurrentDownloads);
     }
+
+    public string GetDownloadPath() => _settings.DownloadPath;
+    public int GetMaxConcurrentDownloads() => _settings.MaxConcurrentDownloads;
 
     public async Task<DownloadTask> StartDownloadAsync(
         string url, string fileName, string repoFullName,
