@@ -1,4 +1,7 @@
 @page "/settings"
+@using GitGet.Core.Interfaces
+@inject IGitGetSettings AppSettings
+@inject ICacheService CacheService
 
 <div class="page-header">
     <h1 class="page-title">⚙️ 设置</h1>
@@ -10,7 +13,7 @@
     <div class="form-group">
         <label class="form-label">默认下载路径</label>
         <div class="flex gap-2">
-            <input class="form-input" value="@_downloadPath" readonly />
+            <input class="form-input" value="@AppSettings.DownloadPath" readonly />
             <button class="btn" @onclick="SelectDownloadPath">选择</button>
         </div>
         <div class="form-hint">所有下载文件将保存到此目录</div>
@@ -18,7 +21,8 @@
 
     <div class="form-group">
         <label class="form-label">最大并发下载数</label>
-        <input class="form-input" type="number" min="1" max="10" @bind="_maxConcurrent" />
+        <input class="form-input" type="number" min="1" max="10" value="@AppSettings.MaxConcurrentDownloads"
+               @onchange="OnMaxConcurrentChanged" />
         <div class="form-hint">同时下载的最大任务数（1-10）</div>
     </div>
 </div>
@@ -47,7 +51,13 @@
     <h3>🧹 缓存管理</h3>
     <div class="flex gap-2 items-center">
         <button class="btn" @onclick="ClearCache">🗑 清除缓存</button>
-        <span style="color:var(--text-muted);font-size:13px;">清除本地缓存的仓库和 Release 数据</span>
+        <span style="color:var(--text-muted);font-size:13px;">
+            清除本地缓存的仓库和 Release 数据
+            @if (_cacheSize > 0)
+            {
+                <text>（约 @FormatSize(_cacheSize)）</text>
+            }
+        </span>
     </div>
 </div>
 
@@ -57,28 +67,57 @@
         <p><strong>GitGet</strong> v1.0</p>
         <p>GitHub Release 应用商店客户端</p>
         <p>技术栈：C# + .NET 9 + Blazor + Photino</p>
-        <p>
-            <a href="https://github.com" target="_blank" style="color:var(--accent);">GitHub 主页</a>
-        </p>
+        <p><a href="https://github.com" target="_blank" style="color:var(--accent);">GitHub 主页</a></p>
     </div>
 </div>
 
 @code {
-    private string _downloadPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
-    private int _maxConcurrent = 3;
     private string _theme = "dark";
     private string _language = "zh";
+    private long _cacheSize;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AppSettings.LoadAsync();
+        _cacheSize = await CacheService.GetCacheSizeAsync();
+    }
 
     private void SelectDownloadPath()
     {
-        // Photino 目前不直接支持文件夹选择对话框
-        // 可以通过 evaluate JS 调用 electron 式 API 或未来扩展
-        // 目前使用固定路径
+        using var dialog = new FolderBrowserDialog
+        {
+            Description = "选择下载目录",
+            SelectedPath = AppSettings.DownloadPath,
+            ShowNewFolderButton = true,
+        };
+
+        if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+        {
+            AppSettings.DownloadPath = dialog.SelectedPath;
+            _ = AppSettings.SaveAsync();
+            StateHasChanged();
+        }
     }
 
-    private void ClearCache()
+    private async Task OnMaxConcurrentChanged(ChangeEventArgs e)
     {
-        // 未来可注入 ICacheService 执行清理
+        if (int.TryParse(e.Value?.ToString(), out var value) && value is >= 1 and <= 10)
+        {
+            AppSettings.MaxConcurrentDownloads = value;
+            await AppSettings.SaveAsync();
+        }
+    }
+
+    private async Task ClearCache()
+    {
+        await CacheService.ClearAllAsync();
+        _cacheSize = 0;
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024L * 1024) return $"{bytes / 1024.0:F1} KB";
+        return $"{bytes / (1024.0 * 1024.0):F1} MB";
     }
 }

@@ -67,6 +67,7 @@ class Program
                 })
                 .AddSingleton<IGitHubApiClient>(sp => new GitHubApiClient(sp.GetRequiredService<INodeScriptRunner>()))
                 .AddSingleton<ITrendingService, TrendingService>()
+                .AddSingleton<IGitGetSettings, GitGetSettings>()
                 .AddSingleton<IDownloadService>(sp =>
                 {
                     var client = new HttpClient

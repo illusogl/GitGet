@@ -10,8 +10,8 @@
 
 | 功能 | 后端依赖 | 状态 |
 |------|---------|------|
-| 热门项目列表 | `GetTrendingReposAsync(timeRange)` | ⬜ |
-| 按时间筛选（本周/本月/今年/全历史） | `timeRange` 参数：`daily` / `weekly` / `monthly` / `yearly` / `all` | ⬜ |
+| 热门项目列表 | `GetTrendingReposAsync(timeRange)` | ✅ |
+| 按时间筛选（本周/本月/今年/全历史） | `timeRange` 参数：`daily` / `weekly` / `monthly` / `yearly` / `all` | ✅ |
 | 个性化推荐（已登录） | `IRecommendationService.GetRecommendedReposAsync(username)` | ⬜ |
 | 点击跳详情 | `AppState.SelectedRepository` → 导航 | ✅ |
 | 加载骨架屏 | 前端状态 | ✅ |
