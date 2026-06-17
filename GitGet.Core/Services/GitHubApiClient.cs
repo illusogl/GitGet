@@ -107,6 +107,39 @@ public class GitHubApiClient : IGitHubApiClient
         }
     }
 
+    public async Task<string?> GetReadmeContentAsync(string owner, string repo, CancellationToken ct = default)
+    {
+        var args = new[] { "GET", $"/repos/{owner}/{repo}/readme", "{}", "" };
+
+        try
+        {
+            var json = await _scriptRunner.RunScriptAsync(args, ct);
+            UpdateRateLimit(json);
+            var element = JsonDocument.Parse(json).RootElement;
+
+            if (element.TryGetProperty("content", out var contentProp)
+                && element.TryGetProperty("encoding", out var encodingProp))
+            {
+                var encoding = encodingProp.GetString() ?? "";
+                var content = contentProp.GetString() ?? "";
+
+                if (encoding == "base64" && !string.IsNullOrEmpty(content))
+                {
+                    // Remove newlines from base64 string before decoding
+                    var cleaned = content.Replace("\n", "").Replace("\r", "");
+                    var bytes = Convert.FromBase64String(cleaned);
+                    return System.Text.Encoding.UTF8.GetString(bytes);
+                }
+            }
+
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     public async Task<GitHubUser?> GetUserAsync(CancellationToken ct = default)
     {
         var args = new[] { "GET", "/user", "{}", "" };

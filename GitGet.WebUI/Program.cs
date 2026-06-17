@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using GitGet.Core.Data;
 using GitGet.Core.Interfaces;
 using GitGet.Core.Services;
@@ -101,6 +102,26 @@ class Program
             app.MainWindow.SetTitle("GitGet");
             app.MainWindow.SetWidth(1280);
             app.MainWindow.SetHeight(800);
+
+            // Handle external link clicks from WebView
+            app.MainWindow.RegisterWebMessageReceivedHandler((sender, message) =>
+            {
+                try
+                {
+                    using var doc = JsonDocument.Parse(message);
+                    var root = doc.RootElement;
+                    if (root.TryGetProperty("type", out var type) && type.GetString() == "openExternal"
+                        && root.TryGetProperty("url", out var urlProp))
+                    {
+                        var url = urlProp.GetString();
+                        if (!string.IsNullOrEmpty(url))
+                        {
+                            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+                        }
+                    }
+                }
+                catch { }
+            });
             try
             {
                 app.MainWindow.Center();

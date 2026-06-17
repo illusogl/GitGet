@@ -1,10 +1,12 @@
 @page "/detail"
 @using GitGet.Core.Models
 @using GitGet.Core.Interfaces
+@using Markdig
 @inject IGitHubApiClient GitHubClient
 @inject IAssetMatcherService Matcher
 @inject IDownloadService DownloadService
 @inject IGitGetSettings AppSettings
+@inject ICacheService CacheService
 @inject AppState AppState
 @inject NavigationManager Navigation
 
@@ -74,12 +76,31 @@
                     @repo.DefaultBranch ?? "main"
                 </span>
             </div>
-            <div class="readme-placeholder-body">
-                <p>🚧 README 内容加载功能正在开发中...</p>
-                <p style="margin-top:8px;color:var(--on-dark-soft);">
-                    未来将在此处显示 @repo.FullName 的 README.md 内容
-                </p>
-            </div>
+            @if (_isReadmeLoading)
+            {
+                <div class="readme-placeholder-body">
+                    <p>正在加载 README...</p>
+                </div>
+            }
+            else if (_readmeError != null)
+            {
+                <div class="readme-placeholder-body">
+                    <p style="color:var(--error);">@_readmeError</p>
+                    <button class="btn btn-sm mt-2" @onclick="LoadReadme">重试</button>
+                </div>
+            }
+            else if (_readmeHtml != null)
+            {
+                <div class="readme-content markdown-body">
+                    @((MarkupString)_readmeHtml)
+                </div>
+            }
+            else
+            {
+                <div class="readme-placeholder-body">
+                    <p>此项目没有 README.md 文件</p>
+                </div>
+            }
         </div>
     }
 
@@ -174,17 +195,86 @@
     private long? _expandedReleaseId;
     private string _activeTab = "readme";
 
+    private string? _readmeContent;
+    private string? _readmeHtml;
+    private bool _isReadmeLoading;
+    private string? _readmeError;
+    private bool _readmeLoaded;
+
     protected override async Task OnInitializedAsync()
     {
-        if (AppState.SelectedRepository != null)
-        {
-            await LoadReleases();
-        }
+        if (AppState.SelectedRepository == null)
+            return;
+
+        // Start both loads in parallel
+        var readmeTask = LoadReadme();
+        var releasesTask = LoadReleases();
+
+        await Task.WhenAll(readmeTask, releasesTask);
     }
 
     private void SwitchTab(string tab)
     {
         _activeTab = tab;
+        if (tab == "readme" && !_readmeLoaded)
+        {
+            _ = LoadReadmeAndRefresh();
+        }
+    }
+
+    private async Task LoadReadmeAndRefresh()
+    {
+        await LoadReadme();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadReadme()
+    {
+        var repo = AppState.SelectedRepository!;
+        _isReadmeLoading = true;
+        _readmeError = null;
+
+        var cacheKey = $"readme:{repo.Owner}/{repo.Name}";
+
+        try
+        {
+            _readmeContent = await CacheService.GetOrSetAsync(
+                cacheKey,
+                async () =>
+                {
+                    var content = await GitHubClient.GetReadmeContentAsync(repo.Owner, repo.Name);
+                    if (content == null)
+                        return string.Empty;
+
+                    if (content.Length > 200_000)
+                        content = content[..200_000] + "\n\n... (内容过长，已截断)";
+
+                    return content;
+                },
+                TimeSpan.FromHours(1)
+            );
+
+            _readmeLoaded = true;
+
+            if (!string.IsNullOrEmpty(_readmeContent))
+            {
+                var html = Markdown.ToHtml(_readmeContent);
+                // Force all links to open in external browser
+                _readmeHtml = html.Replace("<a ", "<a target=\"_blank\" rel=\"noopener noreferrer\" ");
+            }
+            else
+            {
+                _readmeError = "此项目没有 README.md 文件";
+            }
+        }
+        catch (Exception ex)
+        {
+            _readmeError = $"加载 README 失败: {ex.Message}";
+        }
+        finally
+        {
+            _isReadmeLoading = false;
+        }
     }
 
     private async Task LoadReleases()

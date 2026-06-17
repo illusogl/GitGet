@@ -9,6 +9,7 @@ public interface IGitHubApiClient
     Task<List<Release>> GetReleasesAsync(string owner, string repo, int page = 1, int perPage = 30, CancellationToken ct = default);
     Task<List<Repository>> GetStarredReposAsync(string username, int page = 1, int perPage = 50, CancellationToken ct = default);
     Task<GitHubUser?> GetUserAsync(CancellationToken ct = default);
+    Task<string?> GetReadmeContentAsync(string owner, string repo, CancellationToken ct = default);
     int RemainingRateLimit { get; }
     DateTime? RateLimitResetAt { get; }
 }
