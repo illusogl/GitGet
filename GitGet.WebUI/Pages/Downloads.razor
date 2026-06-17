@@ -1,0 +1,169 @@
+@page "/downloads"
+@implements IDisposable
+@using GitGet.Core.Models
+@using GitGet.Core.Interfaces
+@inject IDownloadService DownloadService
+@inject AppState AppState
+
+<div class="page-header">
+    <h1 class="page-title">⬇️ 下载管理</h1>
+    <p class="page-subtitle">查看和管理你的下载任务</p>
+</div>
+
+@if (_tasks.Count == 0)
+{
+    <div class="empty-state">
+        <div class="empty-state-icon">📭</div>
+        <div class="empty-state-title">暂无下载任务</div>
+        <div class="empty-state-desc">从项目详情页点击下载按钮开始</div>
+    </div>
+}
+else
+{
+    <div class="download-list">
+        @foreach (var task in _tasks.OrderByDescending(t => t.CreatedAt))
+        {
+            var status = Enum.TryParse<DownloadTask.TaskStatus>(task.Status, out var s) ? s : DownloadTask.TaskStatus.Queued;
+            var statusClass = status switch
+            {
+                DownloadTask.TaskStatus.Completed => "status-completed",
+                DownloadTask.TaskStatus.Downloading => "status-downloading",
+                DownloadTask.TaskStatus.Paused => "status-paused",
+                DownloadTask.TaskStatus.Failed => "status-failed",
+                _ => "status-queued"
+            };
+
+            <div class="download-item">
+                <div class="download-header">
+                    <div>
+                        <div class="download-name">@task.FileName</div>
+                        <div class="download-repo">@task.RepoFullName</div>
+                    </div>
+                    <div class="download-status @statusClass">
+                        @GetStatusText(status)
+                    </div>
+                </div>
+
+                <div class="download-progress">
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill @(status == DownloadTask.TaskStatus.Completed ? "success" : "")"
+                             style="width:@task.ProgressPercent%"></div>
+                    </div>
+                </div>
+
+                <div class="download-meta">
+                    <span>@task.ProgressPercent% · @FormatSize(task.ReceivedBytes) / @FormatSize(task.TotalBytes)</span>
+                    <div class="download-actions">
+                        @if (status == DownloadTask.TaskStatus.Downloading)
+                        {
+                            <button class="btn btn-sm" @onclick="() => Pause(task.TaskId)">⏸ 暂停</button>
+                        }
+                        else if (status == DownloadTask.TaskStatus.Paused)
+                        {
+                            <button class="btn btn-sm btn-primary" @onclick="() => Resume(task.TaskId)">▶ 继续</button>
+                        }
+                        @if (status != DownloadTask.TaskStatus.Completed && status != DownloadTask.TaskStatus.Cancelled)
+                        {
+                            <button class="btn btn-sm btn-danger" @onclick="() => Cancel(task.TaskId)">✕ 取消</button>
+                        }
+                        @if (status == DownloadTask.TaskStatus.Completed && !string.IsNullOrEmpty(task.LocalPath))
+                        {
+                            <button class="btn btn-sm" @onclick="() => OpenFolder(task.LocalPath)">📂 打开</button>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<DownloadTask> _tasks = new();
+    private System.Threading.Timer? _refreshTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshTasks();
+        _refreshTimer = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await RefreshTasks();
+                StateHasChanged();
+            });
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(2));
+    }
+
+    private async Task RefreshTasks()
+    {
+        try
+        {
+            _tasks = await DownloadService.GetTasksAsync();
+            var activeCount = _tasks.Count(t =>
+                Enum.TryParse<DownloadTask.TaskStatus>(t.Status, out var s) &&
+                s == DownloadTask.TaskStatus.Downloading);
+            AppState.ActiveDownloadCount = activeCount;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"刷新下载任务失败: {ex.Message}");
+        }
+    }
+
+    private async Task Pause(string taskId)
+    {
+        await DownloadService.PauseDownloadAsync(taskId);
+        await RefreshTasks();
+    }
+
+    private async Task Resume(string taskId)
+    {
+        await DownloadService.ResumeDownloadAsync(taskId);
+        await RefreshTasks();
+    }
+
+    private async Task Cancel(string taskId)
+    {
+        await DownloadService.CancelDownloadAsync(taskId);
+        await RefreshTasks();
+    }
+
+    private void OpenFolder(string path)
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
+            {
+                System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{path}\"");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"打开文件夹失败: {ex.Message}");
+        }
+    }
+
+    private static string GetStatusText(DownloadTask.TaskStatus status) => status switch
+    {
+        DownloadTask.TaskStatus.Queued => "排队中",
+        DownloadTask.TaskStatus.Downloading => "下载中",
+        DownloadTask.TaskStatus.Paused => "已暂停",
+        DownloadTask.TaskStatus.Completed => "已完成",
+        DownloadTask.TaskStatus.Failed => "失败",
+        DownloadTask.TaskStatus.Cancelled => "已取消",
+        _ => "未知"
+    };
+
+    private static string FormatSize(long bytes) => bytes switch
+    {
+        < 1024 => $"{bytes} B",
+        < 1024 * 1024 => $"{bytes / 1024.0:F1} KB",
+        _ => $"{bytes / (1024.0 * 1024.0):F1} MB"
+    };
+
+    public void Dispose()
+    {
+        _refreshTimer?.Dispose();
+    }
+}
