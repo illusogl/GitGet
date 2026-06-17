@@ -6,7 +6,7 @@
 @inject NavigationManager Navigation
 
 <div class="page-header">
-    <h1 class="page-title">🔍 搜索项目</h1>
+    <h1 class="page-title">搜索项目</h1>
     <p class="page-subtitle">在 GitHub 上搜索你感兴趣的开源项目</p>
 </div>
 
@@ -23,14 +23,13 @@
 else if (_hasSearched && _results.Count == 0)
 {
     <div class="empty-state">
-        <div class="empty-state-icon">🔍</div>
         <div class="empty-state-title">未找到结果</div>
         <div class="empty-state-desc">尝试更换关键词或检查网络连接</div>
     </div>
 }
 else if (_results.Count > 0)
 {
-    <div class="mb-2" style="color:var(--text-muted);font-size:14px;">
+    <div class="mb-2" style="color:var(--muted);font-size:14px;">
         找到约 @_totalCount 个结果
     </div>
     <div class="card-grid">

@@ -6,79 +6,153 @@
 @inject AppState AppState
 
 <div class="page-header">
-    <h1 class="page-title">⬇️ 下载管理</h1>
+    <h1 class="page-title">下载管理</h1>
     <p class="page-subtitle">查看和管理你的下载任务</p>
 </div>
 
-@if (_tasks.Count == 0)
+@if (_allTasks.Count == 0)
 {
     <div class="empty-state">
-        <div class="empty-state-icon">📭</div>
         <div class="empty-state-title">暂无下载任务</div>
         <div class="empty-state-desc">从项目详情页点击下载按钮开始</div>
     </div>
 }
 else
 {
-    <div class="download-list">
-        @foreach (var task in _tasks.OrderByDescending(t => t.CreatedAt))
-        {
-            var status = Enum.TryParse<DownloadTask.TaskStatus>(task.Status, out var s) ? s : DownloadTask.TaskStatus.Queued;
-            var statusClass = status switch
+    <div class="download-page-layout">
+
+        @* ===== 左栏: 进行中 ===== *@
+        <div class="download-section">
+            <h2 class="download-section-title">
+                进行中
+                @if (_activeTasks.Count > 0)
+                {
+                    <span style="font-size:14px;font-weight:500;color:var(--primary);margin-left:8px;">
+                        (@_activeTasks.Count)
+                    </span>
+                }
+            </h2>
+
+            @if (_activeTasks.Count == 0)
             {
-                DownloadTask.TaskStatus.Completed => "status-completed",
-                DownloadTask.TaskStatus.Downloading => "status-downloading",
-                DownloadTask.TaskStatus.Paused => "status-paused",
-                DownloadTask.TaskStatus.Failed => "status-failed",
-                _ => "status-queued"
-            };
+                <p class="text-muted" style="padding:40px 0;text-align:center;font-size:14px;">
+                    暂无进行中的下载
+                </p>
+            }
+            else
+            {
+                <div class="download-list">
+                    @foreach (var task in _activeTasks)
+                    {
+                        var status = ParseStatus(task.Status);
+                        var statusClass = GetStatusClass(status);
+                        var statusText = GetStatusText(status);
 
-            <div class="download-item">
-                <div class="download-header">
-                    <div>
-                        <div class="download-name">@task.FileName</div>
-                        <div class="download-repo">@task.RepoFullName</div>
-                    </div>
-                    <div class="download-status @statusClass">
-                        @GetStatusText(status)
-                    </div>
-                </div>
+                        <div class="download-item">
+                            <div class="download-header">
+                                <div>
+                                    <div class="download-name">@task.FileName</div>
+                                    <div class="download-repo">@task.RepoFullName</div>
+                                </div>
+                                <div class="download-status @statusClass">
+                                    @statusText
+                                </div>
+                            </div>
 
-                <div class="download-progress">
-                    <div class="progress-bar-bg">
-                        <div class="progress-bar-fill @(status == DownloadTask.TaskStatus.Completed ? "success" : "")"
-                             style="width:@task.ProgressPercent%"></div>
-                    </div>
-                </div>
+                            <div class="download-progress">
+                                <div class="progress-bar-bg">
+                                    <div class="progress-bar-fill" style="width:@task.ProgressPercent%"></div>
+                                </div>
+                            </div>
 
-                <div class="download-meta">
-                    <span>@task.ProgressPercent% · @FormatSize(task.ReceivedBytes) / @FormatSize(task.TotalBytes)</span>
-                    <div class="download-actions">
-                        @if (status == DownloadTask.TaskStatus.Downloading)
-                        {
-                            <button class="btn btn-sm" @onclick="() => Pause(task.TaskId)">⏸ 暂停</button>
-                        }
-                        else if (status == DownloadTask.TaskStatus.Paused)
-                        {
-                            <button class="btn btn-sm btn-primary" @onclick="() => Resume(task.TaskId)">▶ 继续</button>
-                        }
-                        @if (status != DownloadTask.TaskStatus.Completed && status != DownloadTask.TaskStatus.Cancelled)
-                        {
-                            <button class="btn btn-sm btn-danger" @onclick="() => Cancel(task.TaskId)">✕ 取消</button>
-                        }
-                        @if (status == DownloadTask.TaskStatus.Completed && !string.IsNullOrEmpty(task.LocalPath))
-                        {
-                            <button class="btn btn-sm" @onclick="() => OpenFolder(task.LocalPath)">📂 打开</button>
-                        }
-                    </div>
+                            <div class="download-meta">
+                                <span>@task.ProgressPercent% · @FormatSize(task.ReceivedBytes) / @FormatSize(task.TotalBytes)</span>
+                                <div class="download-actions">
+                                    @if (status == DownloadTask.TaskStatus.Downloading)
+                                    {
+                                        <button class="btn btn-sm" @onclick="() => Pause(task.TaskId)">暂停</button>
+                                    }
+                                    else if (status == DownloadTask.TaskStatus.Paused)
+                                    {
+                                        <button class="btn btn-sm btn-primary" @onclick="() => Resume(task.TaskId)">继续</button>
+                                    }
+                                    @if (status != DownloadTask.TaskStatus.Completed && status != DownloadTask.TaskStatus.Cancelled)
+                                    {
+                                        <button class="btn btn-sm" style="color:var(--error);border-color:var(--hairline);" @onclick="() => Cancel(task.TaskId)">取消</button>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
                 </div>
-            </div>
-        }
+            }
+        </div>
+
+        @* ===== 右栏: 已完成 / 已结束 ===== *@
+        <div class="download-section">
+            <h2 class="download-section-title">
+                已完成
+                @if (_inactiveTasks.Count > 0)
+                {
+                    <span style="font-size:14px;font-weight:500;color:var(--muted);margin-left:8px;">
+                        (@_inactiveTasks.Count)
+                    </span>
+                }
+            </h2>
+
+            @if (_inactiveTasks.Count == 0)
+            {
+                <p class="text-muted" style="padding:40px 0;text-align:center;font-size:14px;">
+                    暂无已完成的下载
+                </p>
+            }
+            else
+            {
+                <div class="download-list">
+                    @foreach (var task in _inactiveTasks)
+                    {
+                        var status = ParseStatus(task.Status);
+                        var statusClass = GetStatusClass(status);
+                        var statusText = GetStatusText(status);
+
+                        <div class="download-item">
+                            <div class="download-header">
+                                <div>
+                                    <div class="download-name">@task.FileName</div>
+                                    <div class="download-repo">@task.RepoFullName</div>
+                                </div>
+                                <div class="download-status @statusClass">
+                                    @statusText
+                                </div>
+                            </div>
+
+                            <div class="download-progress">
+                                <div class="progress-bar-bg">
+                                    <div class="progress-bar-fill" style="width:@task.ProgressPercent%"></div>
+                                </div>
+                            </div>
+
+                            <div class="download-meta">
+                                <span>@task.ProgressPercent% · @FormatSize(task.ReceivedBytes) / @FormatSize(task.TotalBytes)</span>
+                                <div class="download-actions">
+                                    @if (status == DownloadTask.TaskStatus.Completed && !string.IsNullOrEmpty(task.LocalPath))
+                                    {
+                                        <button class="btn btn-sm" @onclick="() => OpenFolder(task.LocalPath)">打开</button>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
     </div>
 }
 
 @code {
-    private List<DownloadTask> _tasks = new();
+    private List<DownloadTask> _allTasks = new();
+    private List<DownloadTask> _activeTasks = new();
+    private List<DownloadTask> _inactiveTasks = new();
     private System.Threading.Timer? _refreshTimer;
 
     protected override async Task OnInitializedAsync()
@@ -98,10 +172,32 @@ else
     {
         try
         {
-            _tasks = await DownloadService.GetTasksAsync();
-            var activeCount = _tasks.Count(t =>
-                Enum.TryParse<DownloadTask.TaskStatus>(t.Status, out var s) &&
-                s == DownloadTask.TaskStatus.Downloading);
+            _allTasks = await DownloadService.GetTasksAsync();
+
+            _activeTasks = _allTasks
+                .Where(t =>
+                {
+                    var s = ParseStatus(t.Status);
+                    return s == DownloadTask.TaskStatus.Queued
+                        || s == DownloadTask.TaskStatus.Downloading
+                        || s == DownloadTask.TaskStatus.Paused;
+                })
+                .OrderByDescending(t => t.CreatedAt)
+                .ToList();
+
+            _inactiveTasks = _allTasks
+                .Where(t =>
+                {
+                    var s = ParseStatus(t.Status);
+                    return s == DownloadTask.TaskStatus.Completed
+                        || s == DownloadTask.TaskStatus.Failed
+                        || s == DownloadTask.TaskStatus.Cancelled;
+                })
+                .OrderByDescending(t => t.CreatedAt)
+                .ToList();
+
+            var activeCount = _activeTasks.Count(t =>
+                ParseStatus(t.Status) == DownloadTask.TaskStatus.Downloading);
             AppState.ActiveDownloadCount = activeCount;
         }
         catch (Exception ex)
@@ -143,6 +239,18 @@ else
             Console.WriteLine($"打开文件夹失败: {ex.Message}");
         }
     }
+
+    private static DownloadTask.TaskStatus ParseStatus(string statusStr)
+        => Enum.TryParse<DownloadTask.TaskStatus>(statusStr, out var s) ? s : DownloadTask.TaskStatus.Queued;
+
+    private static string GetStatusClass(DownloadTask.TaskStatus status) => status switch
+    {
+        DownloadTask.TaskStatus.Completed => "status-completed",
+        DownloadTask.TaskStatus.Downloading => "status-downloading",
+        DownloadTask.TaskStatus.Paused => "status-paused",
+        DownloadTask.TaskStatus.Failed => "status-failed",
+        _ => "status-queued"
+    };
 
     private static string GetStatusText(DownloadTask.TaskStatus status) => status switch
     {

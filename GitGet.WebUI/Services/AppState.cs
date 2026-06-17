@@ -40,8 +40,24 @@ public class AppState : INotifyPropertyChanged
         }
     }
 
+    private bool _isDarkMode;
+    public bool IsDarkMode
+    {
+        get => _isDarkMode;
+        set
+        {
+            if (_isDarkMode != value)
+            {
+                _isDarkMode = value;
+                OnPropertyChanged(nameof(IsDarkMode));
+                OnThemeChanged?.Invoke();
+            }
+        }
+    }
+
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action? OnDownloadCountChanged;
+    public event Action? OnThemeChanged;
 
     private void OnPropertyChanged(string propertyName)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));

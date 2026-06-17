@@ -11,10 +11,9 @@
 @if (AppState.SelectedRepository == null)
 {
     <div class="empty-state">
-        <div class="empty-state-icon">📦</div>
         <div class="empty-state-title">未选择项目</div>
         <div class="empty-state-desc">请先从首页或搜索页选择一个项目</div>
-        <button class="btn btn-primary mt-2" @onclick='() => Navigation.NavigateTo("/")'>返回首页</button>
+        <button class="btn btn-primary mt-3" @onclick='() => Navigation.NavigateTo("/")'>返回首页</button>
     </div>
     return;
 }
@@ -23,122 +22,157 @@
     var repo = AppState.SelectedRepository;
 }
 
-<div class="detail-header">
-    <div class="detail-title">
-        <a href="https://github.com/@repo.FullName" target="_blank">@repo.FullName</a>
-    </div>
-    <div class="detail-description">@repo.Description</div>
-    <div class="detail-stats">
-        <span>⭐ @repo.Stars</span>
-        <span>⑂ @repo.Forks</span>
-        <span>📝 @repo.OpenIssues issues</span>
-        @if (!string.IsNullOrEmpty(repo.Language))
-        {
-            <span><span class="language-dot" style="background-color:@GetLanguageColor(repo.Language)"></span> @repo.Language</span>
-        }
-        @if (!string.IsNullOrEmpty(repo.License))
-        {
-            <span>📜 @repo.License</span>
-        }
-    </div>
-    @if (repo.Topics.Count > 0)
-    {
-        <div class="topics">
-            @foreach (var topic in repo.Topics)
+<div class="detail-layout">
+
+    @* ===== 项目信息卡片（始终显示）===== *@
+    <div class="detail-info-card">
+        <div class="detail-title">
+            <a href="https://github.com/@repo.FullName" target="_blank">@repo.FullName</a>
+        </div>
+        <div class="detail-description">@repo.Description</div>
+        <div class="detail-stats">
+            <span>⭐ @repo.Stars.ToString("N0")</span>
+            <span>⑂ @repo.Forks.ToString("N0")</span>
+            <span>📝 @repo.OpenIssues issues</span>
+            @if (!string.IsNullOrEmpty(repo.Language))
             {
-                <span class="topic-tag">@topic</span>
+                <span><span class="language-dot" style="background-color:@GetLanguageColor(repo.Language)"></span> @repo.Language</span>
+            }
+            @if (!string.IsNullOrEmpty(repo.License))
+            {
+                <span>📜 @repo.License</span>
             }
         </div>
-    }
-</div>
-
-<h2 style="font-size:18px;font-weight:600;margin-bottom:16px;">📋 Release 版本</h2>
-
-@if (_isLoading)
-{
-    <div class="loading">正在加载 Release 列表...</div>
-}
-else if (_releases.Count == 0)
-{
-    <div class="empty-state">
-        <div class="empty-state-icon">📭</div>
-        <div class="empty-state-title">暂无 Release</div>
-        <div class="empty-state-desc">该项目还没有发布任何版本</div>
-    </div>
-}
-else
-{
-    <div class="release-list">
-        @foreach (var release in _releases)
+        @if (repo.Topics.Count > 0)
         {
-            <div class="release-item">
-                <div class="release-header" @onclick="() => ToggleRelease(release.Id)">
-                    <div class="flex items-center gap-2">
-                        <span class="release-title">@release.TagName</span>
-                        @if (release.Prerelease)
-                        {
-                            <span class="release-badge">预发布</span>
-                        }
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <span class="release-date">@release.PublishedAt.ToString("yyyy-MM-dd")</span>
-                        <span>@(_expandedReleaseId == release.Id ? "▼" : "▶")</span>
-                    </div>
-                </div>
-
-                @if (_expandedReleaseId == release.Id)
+            <div class="topics">
+                @foreach (var topic in repo.Topics)
                 {
-                    <div class="release-body">
-                        @if (!string.IsNullOrEmpty(release.Body))
-                        {
-                            <div class="release-notes">@release.Body</div>
-                        }
+                    <span class="topic-tag">@topic</span>
+                }
+            </div>
+        }
+    </div>
 
-                        @if (release.Assets.Count > 0)
-                        {
-                            <div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;">
-                                📦 下载资源 (@release.Assets.Count)
-                            </div>
-                            <div class="asset-list">
-                                @foreach (var asset in release.Assets)
+    @* ===== 标签切换栏 ===== *@
+    <div class="detail-tabs">
+        <button class="detail-tab @(_activeTab == "readme" ? "detail-tab-active" : "")" @onclick='() => SwitchTab("readme")'>
+            README
+        </button>
+        <button class="detail-tab @(_activeTab == "releases" ? "detail-tab-active" : "")" @onclick='() => SwitchTab("releases")'>
+            Release 版本
+        </button>
+    </div>
+
+    @* ===== Tab 1: README ===== *@
+    @if (_activeTab == "readme")
+    {
+        <div class="readme-placeholder">
+            <div class="readme-placeholder-header">
+                <span>README.md</span>
+                <span style="margin-left:auto;font-size:12px;color:var(--on-dark-soft);">
+                    @repo.DefaultBranch ?? "main"
+                </span>
+            </div>
+            <div class="readme-placeholder-body">
+                <p>🚧 README 内容加载功能正在开发中...</p>
+                <p style="margin-top:8px;color:var(--on-dark-soft);">
+                    未来将在此处显示 @repo.FullName 的 README.md 内容
+                </p>
+            </div>
+        </div>
+    }
+
+    @* ===== Tab 2: Release 版本 ===== *@
+    @if (_activeTab == "releases")
+    {
+        @if (_isLoading)
+        {
+            <div class="loading">正在加载 Release 列表...</div>
+        }
+        else if (_releases.Count == 0)
+        {
+            <div class="empty-state">
+                <div class="empty-state-title">暂无 Release</div>
+                <div class="empty-state-desc">该项目还没有发布任何版本</div>
+            </div>
+        }
+        else
+        {
+            <div class="release-list">
+                @foreach (var release in _releases)
+                {
+                    <div class="release-item">
+                        <div class="release-header" @onclick="() => ToggleRelease(release.Id)">
+                            <div class="flex items-center gap-3">
+                                <span class="release-title">@release.TagName</span>
+                                @if (release.Prerelease)
                                 {
-                                    var isRecommended = _recommendedAssets.TryGetValue(asset.Id, out var score) && score > 0;
-                                    <div class="asset-item">
-                                        <div class="asset-info">
-                                            <span class="asset-name">@asset.Name</span>
-                                            <span class="asset-size">@FormatSize(asset.Size)</span>
-                                            @if (isRecommended)
-                                            {
-                                                <span class="asset-recommended">推荐</span>
-                                            }
-                                        </div>
-                                        <div class="asset-actions">
-                                            <button class="btn btn-primary btn-sm" @onclick="() => DownloadAsset(asset, repo.FullName)">
-                                                ⬇️ 下载
-                                            </button>
-                                        </div>
-                                    </div>
+                                    <span class="release-badge">预发布</span>
                                 }
                             </div>
-                        }
-                        else
+                            <div class="flex items-center gap-4">
+                                <span class="release-date">@release.PublishedAt.ToString("yyyy-MM-dd")</span>
+                                <span style="color:var(--muted-soft);">@(_expandedReleaseId == release.Id ? "▼" : "▶")</span>
+                            </div>
+                        </div>
+
+                        @if (_expandedReleaseId == release.Id)
                         {
-                            <div style="color:var(--text-muted);font-size:13px;padding:8px 0;">
-                                此版本没有上传资源文件
+                            <div class="release-body">
+                                @if (!string.IsNullOrEmpty(release.Body))
+                                {
+                                    <div class="release-notes">@release.Body</div>
+                                }
+
+                                @if (release.Assets.Count > 0)
+                                {
+                                <div style="font-size:14px;font-weight:500;color:var(--muted);margin-bottom:8px;">
+                                    下载资源 (@release.Assets.Count)
+                                </div>
+                                    <div class="asset-list">
+                                        @foreach (var asset in release.Assets)
+                                        {
+                                            var isRecommended = _recommendedAssets.TryGetValue(asset.Id, out var score) && score > 0;
+                                            <div class="asset-item">
+                                                <div class="asset-info">
+                                                    <span class="asset-name">@asset.Name</span>
+                                                    <span class="asset-size">@FormatSize(asset.Size)</span>
+                                                    @if (isRecommended)
+                                                    {
+                                                        <span class="asset-recommended">推荐</span>
+                                                    }
+                                                </div>
+                                                <div class="asset-actions">
+                                                    <button class="btn btn-primary btn-sm" @onclick="() => DownloadAsset(asset, repo.FullName)">
+                                                        ↓ 下载
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div style="color:var(--muted-soft);font-size:14px;padding:8px 0;">
+                                        此版本没有上传资源文件
+                                    </div>
+                                }
                             </div>
                         }
                     </div>
                 }
             </div>
         }
-    </div>
-}
+    }
+</div>
 
 @code {
     private List<Release> _releases = new();
     private Dictionary<long, int> _recommendedAssets = new();
     private bool _isLoading = true;
     private long? _expandedReleaseId;
+    private string _activeTab = "readme";
 
     protected override async Task OnInitializedAsync()
     {
@@ -146,6 +180,11 @@ else
         {
             await LoadReleases();
         }
+    }
+
+    private void SwitchTab(string tab)
+    {
+        _activeTab = tab;
     }
 
     private async Task LoadReleases()
@@ -157,7 +196,6 @@ else
             var releases = await GitHubClient.GetReleasesAsync(repo.Owner, repo.Name, perPage: 10);
             _releases = releases;
 
-            // Pre-calculate recommended assets for all releases
             foreach (var release in releases)
             {
                 var recs = Matcher.GetRecommendedAssets(release.Assets);

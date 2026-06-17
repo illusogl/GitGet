@@ -1,15 +1,17 @@
 @page "/settings"
 @using GitGet.Core.Interfaces
+@using GitGet.WebUI.Services
 @inject IGitGetSettings AppSettings
 @inject ICacheService CacheService
+@inject AppState AppState
 
 <div class="page-header">
-    <h1 class="page-title">⚙️ 设置</h1>
+    <h1 class="page-title">设置</h1>
     <p class="page-subtitle">配置 GitGet 的下载和外观选项</p>
 </div>
 
 <div class="settings-section">
-    <h3>📁 下载设置</h3>
+    <h3>下载设置</h3>
     <div class="form-group">
         <label class="form-label">默认下载路径</label>
         <div class="flex gap-2">
@@ -28,14 +30,13 @@
 </div>
 
 <div class="settings-section">
-    <h3>🎨 外观设置</h3>
+    <h3>外观设置</h3>
     <div class="form-group">
         <label class="form-label">主题</label>
-        <select class="form-input" @bind="_theme">
-            <option value="dark">深色（默认）</option>
-            <option value="light">浅色</option>
-            <option value="system">跟随系统</option>
-        </select>
+        <div class="theme-toggle" @onclick="ToggleTheme">
+            <span class="theme-toggle-label @(AppState.IsDarkMode ? "" : "theme-toggle-active")">浅色</span>
+            <span class="theme-toggle-label @(AppState.IsDarkMode ? "theme-toggle-active" : "")">深色</span>
+        </div>
     </div>
 
     <div class="form-group">
@@ -48,9 +49,9 @@
 </div>
 
 <div class="settings-section">
-    <h3>🧹 缓存管理</h3>
+    <h3>缓存管理</h3>
     <div class="flex gap-2 items-center">
-        <button class="btn" @onclick="ClearCache">🗑 清除缓存</button>
+        <button class="btn" @onclick="ClearCache">清除缓存</button>
         <span style="color:var(--text-muted);font-size:13px;">
             清除本地缓存的仓库和 Release 数据
             @if (_cacheSize > 0)
@@ -62,17 +63,16 @@
 </div>
 
 <div class="settings-section">
-    <h3>ℹ️ 关于</h3>
-    <div style="font-size:14px;color:var(--text-secondary);line-height:1.8;">
+    <h3>关于</h3>
+    <div style="font-size:14px;color:var(--muted);line-height:1.8;">
         <p><strong>GitGet</strong> v1.0</p>
         <p>GitHub Release 应用商店客户端</p>
         <p>技术栈：C# + .NET 9 + Blazor + Photino</p>
-        <p><a href="https://github.com" target="_blank" style="color:var(--accent);">GitHub 主页</a></p>
+        <p><a href="https://github.com" target="_blank" style="color:var(--primary);">GitHub 主页</a></p>
     </div>
 </div>
 
 @code {
-    private string _theme = "dark";
     private string _language = "zh";
     private long _cacheSize;
 
@@ -80,6 +80,11 @@
     {
         await AppSettings.LoadAsync();
         _cacheSize = await CacheService.GetCacheSizeAsync();
+    }
+
+    private void ToggleTheme()
+    {
+        AppState.IsDarkMode = !AppState.IsDarkMode;
     }
 
     private void SelectDownloadPath()

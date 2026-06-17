@@ -9,6 +9,11 @@
 </head>
 <body>
     <app>Loading...</app>
+    <script>
+        window.setTheme = function(isDark) {
+            document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+        };
+    </script>
     <script src="_framework/blazor.webview.js"></script>
 </body>
 </html>
