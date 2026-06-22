@@ -1,5 +1,7 @@
 @inherits LayoutComponentBase
 @using Microsoft.JSInterop
+@inject LocalizationService L
+@inject AppState AppState
 
 <div class="app-container">
     <div class="sidebar">
@@ -9,23 +11,23 @@
 
         <nav class="nav-menu">
             <NavLink class="nav-item" href="/" Match="NavLinkMatch.All">
-                <span class="nav-text">首页</span>
+                <span class="nav-text">@L.T("nav.home")</span>
             </NavLink>
             <NavLink class="nav-item" href="/search">
-                <span class="nav-text">搜索</span>
+                <span class="nav-text">@L.T("nav.search")</span>
             </NavLink>
             <NavLink class="nav-item" href="/downloads">
-                <span class="nav-text">下载</span>
+                <span class="nav-text">@L.T("nav.downloads")</span>
                 @if (DownloadCount > 0)
                 {
                     <span class="nav-badge">@DownloadCount</span>
                 }
             </NavLink>
             <NavLink class="nav-item" href="/login">
-                <span class="nav-text">登录</span>
+                <span class="nav-text">@L.T("nav.login")</span>
             </NavLink>
             <NavLink class="nav-item" href="/settings">
-                <span class="nav-text">设置</span>
+                <span class="nav-text">@L.T("nav.settings")</span>
             </NavLink>
         </nav>
 
@@ -40,7 +42,6 @@
 </div>
 
 @code {
-    [Inject] private AppState AppState { get; set; } = default!;
     [Inject] private IJSRuntime JS { get; set; } = default!;
 
     private int DownloadCount => AppState.ActiveDownloadCount;
@@ -49,7 +50,7 @@
     {
         AppState.OnDownloadCountChanged += OnDownloadCountChanged;
         AppState.OnThemeChanged += OnThemeChangedHandler;
-        // Apply current theme on startup
+        L.OnLanguageChanged += OnLanguageChangedHandler;
         await SetThemeAsync(AppState.IsDarkMode);
     }
 
@@ -62,6 +63,11 @@
     }
 
     private void OnDownloadCountChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnLanguageChangedHandler()
     {
         InvokeAsync(StateHasChanged);
     }
@@ -80,5 +86,6 @@
     {
         AppState.OnDownloadCountChanged -= OnDownloadCountChanged;
         AppState.OnThemeChanged -= OnThemeChangedHandler;
+        L.OnLanguageChanged -= OnLanguageChangedHandler;
     }
 }

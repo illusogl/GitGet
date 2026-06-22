@@ -4,27 +4,27 @@
 @using GitGet.Core.Interfaces
 @inject IDownloadService DownloadService
 @inject AppState AppState
+@inject LocalizationService L
 
 <div class="page-header">
-    <h1 class="page-title">下载管理</h1>
-    <p class="page-subtitle">查看和管理你的下载任务</p>
+    <h1 class="page-title">@L.T("downloads.title")</h1>
+    <p class="page-subtitle">@L.T("downloads.subtitle")</p>
 </div>
 
 @if (_allTasks.Count == 0)
 {
     <div class="empty-state">
-        <div class="empty-state-title">暂无下载任务</div>
-        <div class="empty-state-desc">从项目详情页点击下载按钮开始</div>
+        <div class="empty-state-title">@L.T("downloads.empty")</div>
+        <div class="empty-state-desc">@L.T("downloads.empty_desc")</div>
     </div>
 }
 else
 {
     <div class="download-page-layout">
 
-        @* ===== 左栏: 进行中 ===== *@
         <div class="download-section">
             <h2 class="download-section-title">
-                进行中
+                @L.T("downloads.active")
                 @if (_activeTasks.Count > 0)
                 {
                     <span style="font-size:14px;font-weight:500;color:var(--primary);margin-left:8px;">
@@ -36,7 +36,7 @@ else
             @if (_activeTasks.Count == 0)
             {
                 <p class="text-muted" style="padding:40px 0;text-align:center;font-size:14px;">
-                    暂无进行中的下载
+                    @L.T("downloads.no_active")
                 </p>
             }
             else
@@ -46,7 +46,7 @@ else
                     {
                         var status = ParseStatus(task.Status);
                         var statusClass = GetStatusClass(status);
-                        var statusText = GetStatusText(status);
+                        var statusText = TStatus(status);
 
                         <div class="download-item">
                             <div class="download-header">
@@ -70,15 +70,15 @@ else
                                 <div class="download-actions">
                                     @if (status == DownloadTask.TaskStatus.Downloading)
                                     {
-                                        <button class="btn btn-sm" @onclick="() => Pause(task.TaskId)">暂停</button>
+                                        <button class="btn btn-sm" @onclick="() => Pause(task.TaskId)">@L.T("downloads.pause")</button>
                                     }
                                     else if (status == DownloadTask.TaskStatus.Paused)
                                     {
-                                        <button class="btn btn-sm btn-primary" @onclick="() => Resume(task.TaskId)">继续</button>
+                                        <button class="btn btn-sm btn-primary" @onclick="() => Resume(task.TaskId)">@L.T("downloads.resume")</button>
                                     }
                                     @if (status != DownloadTask.TaskStatus.Completed && status != DownloadTask.TaskStatus.Cancelled)
                                     {
-                                        <button class="btn btn-sm" style="color:var(--error);border-color:var(--hairline);" @onclick="() => Cancel(task.TaskId)">取消</button>
+                                        <button class="btn btn-sm" style="color:var(--error);border-color:var(--hairline);" @onclick="() => Cancel(task.TaskId)">@L.T("downloads.cancel")</button>
                                     }
                                 </div>
                             </div>
@@ -88,10 +88,9 @@ else
             }
         </div>
 
-        @* ===== 右栏: 已完成 / 已结束 ===== *@
         <div class="download-section">
             <h2 class="download-section-title">
-                已完成
+                @L.T("downloads.completed")
                 @if (_inactiveTasks.Count > 0)
                 {
                     <span style="font-size:14px;font-weight:500;color:var(--muted);margin-left:8px;">
@@ -103,7 +102,7 @@ else
             @if (_inactiveTasks.Count == 0)
             {
                 <p class="text-muted" style="padding:40px 0;text-align:center;font-size:14px;">
-                    暂无已完成的下载
+                    @L.T("downloads.no_completed")
                 </p>
             }
             else
@@ -113,7 +112,7 @@ else
                     {
                         var status = ParseStatus(task.Status);
                         var statusClass = GetStatusClass(status);
-                        var statusText = GetStatusText(status);
+                        var statusText = TStatus(status);
 
                         <div class="download-item">
                             <div class="download-header">
@@ -137,7 +136,7 @@ else
                                 <div class="download-actions">
                                     @if (status == DownloadTask.TaskStatus.Completed && !string.IsNullOrEmpty(task.LocalPath))
                                     {
-                                        <button class="btn btn-sm" @onclick="() => OpenFolder(task.LocalPath)">打开</button>
+                                        <button class="btn btn-sm" @onclick="() => OpenFolder(task.LocalPath)">@L.T("downloads.open")</button>
                                     }
                                 </div>
                             </div>
@@ -154,6 +153,11 @@ else
     private List<DownloadTask> _activeTasks = new();
     private List<DownloadTask> _inactiveTasks = new();
     private System.Threading.Timer? _refreshTimer;
+
+    protected override void OnInitialized()
+    {
+        L.OnLanguageChanged += () => InvokeAsync(StateHasChanged);
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -240,6 +244,17 @@ else
         }
     }
 
+    private string TStatus(DownloadTask.TaskStatus status) => status switch
+    {
+        DownloadTask.TaskStatus.Queued => L.T("status.queued"),
+        DownloadTask.TaskStatus.Downloading => L.T("status.downloading"),
+        DownloadTask.TaskStatus.Paused => L.T("status.paused"),
+        DownloadTask.TaskStatus.Completed => L.T("status.completed"),
+        DownloadTask.TaskStatus.Failed => L.T("status.failed"),
+        DownloadTask.TaskStatus.Cancelled => L.T("status.cancelled"),
+        _ => L.T("status.unknown")
+    };
+
     private static DownloadTask.TaskStatus ParseStatus(string statusStr)
         => Enum.TryParse<DownloadTask.TaskStatus>(statusStr, out var s) ? s : DownloadTask.TaskStatus.Queued;
 
@@ -252,17 +267,6 @@ else
         _ => "status-queued"
     };
 
-    private static string GetStatusText(DownloadTask.TaskStatus status) => status switch
-    {
-        DownloadTask.TaskStatus.Queued => "排队中",
-        DownloadTask.TaskStatus.Downloading => "下载中",
-        DownloadTask.TaskStatus.Paused => "已暂停",
-        DownloadTask.TaskStatus.Completed => "已完成",
-        DownloadTask.TaskStatus.Failed => "失败",
-        DownloadTask.TaskStatus.Cancelled => "已取消",
-        _ => "未知"
-    };
-
     private static string FormatSize(long bytes)
     {
         if (bytes < 1024) return $"{bytes} B";
@@ -273,5 +277,6 @@ else
     public void Dispose()
     {
         _refreshTimer?.Dispose();
+        L.OnLanguageChanged -= () => InvokeAsync(StateHasChanged);
     }
 }

@@ -3,39 +3,40 @@
 @using GitGet.Core.Interfaces
 @inject IGitHubApiClient GitHubClient
 @inject AppState AppState
+@inject LocalizationService L
 @inject NavigationManager Navigation
 
 <div class="page-header">
-    <h1 class="page-title">搜索项目</h1>
-    <p class="page-subtitle">在 GitHub 上搜索你感兴趣的开源项目</p>
+    <h1 class="page-title">@L.T("search.title")</h1>
+    <p class="page-subtitle">@L.T("search.subtitle")</p>
 </div>
 
 <div class="search-bar">
     <input class="search-input" @bind="_query" @bind:event="oninput"
-           @onkeydown="HandleKeyDown" placeholder="输入关键词，如: vscode, react, dotnet..." />
-    <button class="btn btn-primary" @onclick="DoSearch">搜索</button>
+           @onkeydown="HandleKeyDown" placeholder="@L.T("search.placeholder")" />
+    <button class="btn btn-primary" @onclick="DoSearch">@L.T("search.btn")</button>
 </div>
 
 @if (_isSearching)
 {
-    <div class="loading">正在搜索...</div>
+    <div class="loading">@L.T("search.searching")</div>
 }
 else if (_hasSearched && _results.Count == 0)
 {
     <div class="empty-state">
-        <div class="empty-state-title">未找到结果</div>
-        <div class="empty-state-desc">尝试更换关键词或检查网络连接</div>
+        <div class="empty-state-title">@L.T("search.no_results")</div>
+        <div class="empty-state-desc">@L.T("search.no_results_desc")</div>
     </div>
 }
 else if (_results.Count > 0)
 {
     <div class="mb-2" style="color:var(--muted);font-size:14px;">
-        找到约 @_totalCount 个结果
+        @string.Format(L.T("search.result_count"), _totalCount)
     </div>
     <div class="card-grid">
         @foreach (var repo in _results)
         {
-            <ProjectCard Repo="repo" OnClick="() => GoToDetail(repo)" />
+            <ProjectCard Repo="repo" OnClick="() => GoToDetail(repo)" L="L" />
         }
     </div>
 }
@@ -46,6 +47,11 @@ else if (_results.Count > 0)
     private int _totalCount = 0;
     private bool _isSearching = false;
     private bool _hasSearched = false;
+
+    protected override void OnInitialized()
+    {
+        L.OnLanguageChanged += () => InvokeAsync(StateHasChanged);
+    }
 
     private async Task DoSearch()
     {
@@ -63,7 +69,7 @@ else if (_results.Count > 0)
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"搜索失败: {ex.Message}");
+            Console.WriteLine($"Search failed: {ex.Message}");
         }
         finally
         {
@@ -83,5 +89,10 @@ else if (_results.Count > 0)
     {
         AppState.SelectedRepository = repo;
         Navigation.NavigateTo("/detail");
+    }
+
+    public void Dispose()
+    {
+        L.OnLanguageChanged -= () => InvokeAsync(StateHasChanged);
     }
 }

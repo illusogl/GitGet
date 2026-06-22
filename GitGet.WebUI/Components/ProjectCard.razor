@@ -19,9 +19,16 @@
 @code {
     [Parameter] public Repository Repo { get; set; } = default!;
     [Parameter] public EventCallback OnClick { get; set; }
+    [Parameter] public LocalizationService? L { get; set; }
 
     private static string FormatNumber(int n) => n >= 1000 ? $"{(n / 1000.0):F1}k" : n.ToString();
-    private static string FormatDate(DateTime dt) => dt == DateTime.MinValue ? "" : $"{(DateTime.Now - dt).Days}天前";
+    private string FormatDate(DateTime dt)
+    {
+        if (dt == DateTime.MinValue) return "";
+        var days = (DateTime.Now - dt).Days;
+        var suffix = L?.T("card.days_ago") ?? "天前";
+        return $"{days}{suffix}";
+    }
 
     private static string GetLanguageColor(string lang) => lang.ToLower() switch
     {

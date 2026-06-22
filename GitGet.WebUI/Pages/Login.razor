@@ -1,23 +1,25 @@
 @page "/login"
+@using GitGet.WebUI.Services
+@inject LocalizationService L
 @inject NavigationManager Navigation
 
 <div class="login-container">
     <div class="login-card">
-        <h1 class="login-title">登录 GitGet</h1>
-        <p class="login-subtitle">连接你的 GitHub 账户以获得个性化体验</p>
+        <h1 class="login-title">@L.T("login.title")</h1>
+        <p class="login-subtitle">@L.T("login.subtitle")</p>
 
         <div class="login-placeholder">
-            <p>🚧 GitHub OAuth 登录功能正在开发中...</p>
-            <p style="margin-top:8px;">登录后你可以：</p>
-            <ul style="text-align:left;margin:12px auto 0;max-width:240px;font-size:12px;color:var(--muted);">
-                <li>⭐ 星标同步</li>
-                <li>🔍 个性化推荐</li>
-                <li>📥 下载历史云同步</li>
+            <p>@L.T("login.wip")</p>
+            <p style="margin-top:8px;">@L.T("login.features_desc")</p>
+            <ul style="text-align:left;margin:12px auto 0;max-width:300px;font-size:12px;color:var(--muted);">
+                <li>@L.T("login.feature_star")</li>
+                <li>@L.T("login.feature_rec")</li>
+                <li>@L.T("login.feature_cloud")</li>
             </ul>
         </div>
 
         <p class="text-muted" style="font-size:13px;">
-            当前为离线模式，无需登录也可浏览和下载
+            @L.T("login.offline")
         </p>
     </div>
 </div>

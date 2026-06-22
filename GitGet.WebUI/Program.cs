@@ -39,6 +39,7 @@ class Program
 
             Log.Info("注册服务...");
             appBuilder.Services
+                .AddSingleton<LocalizationService>()
                 .AddSingleton<AppState>()
                 .AddSingleton<ILocalDataStore>(sp =>
                 {

@@ -8,14 +8,15 @@
 @inject IGitGetSettings AppSettings
 @inject ICacheService CacheService
 @inject AppState AppState
+@inject LocalizationService L
 @inject NavigationManager Navigation
 
 @if (AppState.SelectedRepository == null)
 {
     <div class="empty-state">
-        <div class="empty-state-title">未选择项目</div>
-        <div class="empty-state-desc">请先从首页或搜索页选择一个项目</div>
-        <button class="btn btn-primary mt-3" @onclick='() => Navigation.NavigateTo("/")'>返回首页</button>
+        <div class="empty-state-title">@L.T("detail.not_selected")</div>
+        <div class="empty-state-desc">@L.T("detail.not_selected_desc")</div>
+        <button class="btn btn-primary mt-3" @onclick='() => Navigation.NavigateTo("/")'>@L.T("detail.back_home")</button>
     </div>
     return;
 }
@@ -26,7 +27,6 @@
 
 <div class="detail-layout">
 
-    @* ===== 项目信息卡片（始终显示）===== *@
     <div class="detail-info-card">
         <div class="detail-title">
             <a href="https://github.com/@repo.FullName" target="_blank">@repo.FullName</a>
@@ -35,7 +35,7 @@
         <div class="detail-stats">
             <span>⭐ @repo.Stars.ToString("N0")</span>
             <span>⑂ @repo.Forks.ToString("N0")</span>
-            <span>📝 @repo.OpenIssues issues</span>
+            <span>📝 @repo.OpenIssues @L.T("detail.issues")</span>
             @if (!string.IsNullOrEmpty(repo.Language))
             {
                 <span><span class="language-dot" style="background-color:@GetLanguageColor(repo.Language)"></span> @repo.Language</span>
@@ -56,17 +56,15 @@
         }
     </div>
 
-    @* ===== 标签切换栏 ===== *@
     <div class="detail-tabs">
         <button class="detail-tab @(_activeTab == "readme" ? "detail-tab-active" : "")" @onclick='() => SwitchTab("readme")'>
-            README
+            @L.T("detail.readme_tab")
         </button>
         <button class="detail-tab @(_activeTab == "releases" ? "detail-tab-active" : "")" @onclick='() => SwitchTab("releases")'>
-            Release 版本
+            @L.T("detail.releases_tab")
         </button>
     </div>
 
-    @* ===== Tab 1: README ===== *@
     @if (_activeTab == "readme")
     {
         <div class="readme-placeholder">
@@ -79,14 +77,14 @@
             @if (_isReadmeLoading)
             {
                 <div class="readme-placeholder-body">
-                    <p>正在加载 README...</p>
+                    <p>@L.T("detail.loading_readme")</p>
                 </div>
             }
             else if (_readmeError != null)
             {
                 <div class="readme-placeholder-body">
                     <p style="color:var(--error);">@_readmeError</p>
-                    <button class="btn btn-sm mt-2" @onclick="LoadReadme">重试</button>
+                    <button class="btn btn-sm mt-2" @onclick="LoadReadme">@L.T("detail.retry")</button>
                 </div>
             }
             else if (_readmeHtml != null)
@@ -98,24 +96,23 @@
             else
             {
                 <div class="readme-placeholder-body">
-                    <p>此项目没有 README.md 文件</p>
+                    <p>@L.T("detail.no_readme")</p>
                 </div>
             }
         </div>
     }
 
-    @* ===== Tab 2: Release 版本 ===== *@
     @if (_activeTab == "releases")
     {
         @if (_isLoading)
         {
-            <div class="loading">正在加载 Release 列表...</div>
+            <div class="loading">@L.T("detail.loading_releases")</div>
         }
         else if (_releases.Count == 0)
         {
             <div class="empty-state">
-                <div class="empty-state-title">暂无 Release</div>
-                <div class="empty-state-desc">该项目还没有发布任何版本</div>
+                <div class="empty-state-title">@L.T("detail.no_releases")</div>
+                <div class="empty-state-desc">@L.T("detail.no_releases_desc")</div>
             </div>
         }
         else
@@ -129,7 +126,7 @@
                                 <span class="release-title">@release.TagName</span>
                                 @if (release.Prerelease)
                                 {
-                                    <span class="release-badge">预发布</span>
+                                    <span class="release-badge">@L.T("detail.prerelease")</span>
                                 }
                             </div>
                             <div class="flex items-center gap-4">
@@ -149,7 +146,7 @@
                                 @if (release.Assets.Count > 0)
                                 {
                                 <div style="font-size:14px;font-weight:500;color:var(--muted);margin-bottom:8px;">
-                                    下载资源 (@release.Assets.Count)
+                                    @string.Format(L.T("detail.download_assets"), release.Assets.Count)
                                 </div>
                                     <div class="asset-list">
                                         @foreach (var asset in release.Assets)
@@ -161,12 +158,12 @@
                                                     <span class="asset-size">@FormatSize(asset.Size)</span>
                                                     @if (isRecommended)
                                                     {
-                                                        <span class="asset-recommended">推荐</span>
+                                                        <span class="asset-recommended">@L.T("detail.recommended")</span>
                                                     }
                                                 </div>
                                                 <div class="asset-actions">
                                                     <button class="btn btn-primary btn-sm" @onclick="() => DownloadAsset(asset, repo.FullName)">
-                                                        ↓ 下载
+                                                        ↓ @L.T("detail.download")
                                                     </button>
                                                 </div>
                                             </div>
@@ -176,7 +173,7 @@
                                 else
                                 {
                                     <div style="color:var(--muted-soft);font-size:14px;padding:8px 0;">
-                                        此版本没有上传资源文件
+                                        @L.T("detail.no_assets")
                                     </div>
                                 }
                             </div>
@@ -201,12 +198,16 @@
     private string? _readmeError;
     private bool _readmeLoaded;
 
+    protected override void OnInitialized()
+    {
+        L.OnLanguageChanged += () => InvokeAsync(StateHasChanged);
+    }
+
     protected override async Task OnInitializedAsync()
     {
         if (AppState.SelectedRepository == null)
             return;
 
-        // Start both loads in parallel
         var readmeTask = LoadReadme();
         var releasesTask = LoadReleases();
 
@@ -255,25 +256,52 @@
             );
 
             _readmeLoaded = true;
+            _isReadmeLoading = false;
 
             if (!string.IsNullOrEmpty(_readmeContent))
             {
-                var html = Markdown.ToHtml(_readmeContent);
-                // Force all links to open in external browser
-                _readmeHtml = html.Replace("<a ", "<a target=\"_blank\" rel=\"noopener noreferrer\" ");
+                var htmlCacheKey = $"readme:html:{repo.Owner}/{repo.Name}";
+                var cachedHtml = await CacheService.GetOrSetAsync<string?>(
+                    htmlCacheKey,
+                    () => Task.FromResult<string?>(null),
+                    TimeSpan.FromHours(1));
+
+                if (!string.IsNullOrEmpty(cachedHtml))
+                {
+                    _readmeHtml = cachedHtml;
+                }
+                else
+                {
+                    var content = _readmeContent;
+                    _ = Task.Run(async () =>
+                    {
+                        var html = Markdown.ToHtml(content);
+                        html = html.Replace("<a ", "<a target=\"_blank\" rel=\"noopener noreferrer\" ");
+
+                        await CacheService.GetOrSetAsync(
+                            htmlCacheKey,
+                            () => Task.FromResult(html),
+                            TimeSpan.FromHours(1));
+
+                        await InvokeAsync(() =>
+                        {
+                            _readmeHtml = html;
+                            StateHasChanged();
+                        });
+                    });
+                }
             }
             else
             {
-                _readmeError = "此项目没有 README.md 文件";
+                _readmeError = L.T("detail.no_readme");
+                StateHasChanged();
             }
         }
         catch (Exception ex)
         {
-            _readmeError = $"加载 README 失败: {ex.Message}";
-        }
-        finally
-        {
+            _readmeError = string.Format(L.T("detail.load_failed"), ex.Message);
             _isReadmeLoading = false;
+            StateHasChanged();
         }
     }
 
