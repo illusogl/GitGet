@@ -35,21 +35,21 @@ public class CacheService : ICacheService
 
     public async Task ClearAllAsync(CancellationToken ct = default)
     {
-        // Track cache entry count
-        var cacheKeys = await _dataStore.GetAsync<List<string>>("__cache_keys__", ct);
-        if (cacheKeys != null)
+        var tables = new[] { "cache_repos", "cache_releases" };
+        foreach (var table in tables)
         {
-            foreach (var key in cacheKeys)
-            {
-                await _dataStore.DeleteAsync(key, ct);
-            }
-            await _dataStore.DeleteAsync("__cache_keys__", ct);
+            await _dataStore.ClearTableAsync(table, ct);
         }
     }
 
     public async Task<long> GetCacheSizeAsync(CancellationToken ct = default)
     {
-        var cacheKeys = await _dataStore.GetAsync<List<string>>("__cache_keys__", ct);
-        return cacheKeys?.Count * 256L ?? 0; // Estimated 256 bytes per entry
+        var tables = new[] { "cache_repos", "cache_releases" };
+        long total = 0;
+        foreach (var table in tables)
+        {
+            total += await _dataStore.GetTableRowCountAsync(table, ct);
+        }
+        return total;
     }
 }

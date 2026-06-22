@@ -146,6 +146,27 @@ public class LocalDataStore : ILocalDataStore
         return "cache_repos"; // default
     }
 
+    public async Task ClearTableAsync(string tableName, CancellationToken ct = default)
+    {
+        await InitializeAsync(ct);
+        var safeTableName = SanitizeTableName(tableName);
+
+        using var cmd = _connection.CreateCommand();
+        cmd.CommandText = $"DELETE FROM {safeTableName}";
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    public async Task<long> GetTableRowCountAsync(string tableName, CancellationToken ct = default)
+    {
+        await InitializeAsync(ct);
+        var safeTableName = SanitizeTableName(tableName);
+
+        using var cmd = _connection.CreateCommand();
+        cmd.CommandText = $"SELECT COUNT(*) FROM {safeTableName}";
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is long count ? count : 0;
+    }
+
     private static string SanitizeTableName(string tableName)
     {
         // Only allow known table names to prevent SQL injection

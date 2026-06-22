@@ -91,6 +91,17 @@ class Program
             var app = appBuilder.Build();
             Log.Info("appBuilder.Build() 完成");
 
+            // Load persisted settings and apply defaults
+            var settings = app.Services.GetRequiredService<IGitGetSettings>();
+            settings.LoadAsync().GetAwaiter().GetResult();
+            Log.Info($"设置已加载 — 下载路径: {settings.DownloadPath}, 并发数: {settings.MaxConcurrentDownloads}, 主题: {settings.Theme}, 语言: {settings.Language}");
+
+            var appState = app.Services.GetRequiredService<AppState>();
+            appState.IsDarkMode = settings.Theme == "dark";
+
+            var localization = app.Services.GetRequiredService<LocalizationService>();
+            localization.SetLanguage(settings.Language);
+
             if (app.MainWindow == null)
             {
                 Log.Fatal("MainWindow 为 null，窗口创建失败");

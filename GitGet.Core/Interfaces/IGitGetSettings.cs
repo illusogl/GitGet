@@ -4,6 +4,8 @@ public interface IGitGetSettings
 {
     string DownloadPath { get; set; }
     int MaxConcurrentDownloads { get; set; }
+    string Theme { get; set; }
+    string Language { get; set; }
 
     Task LoadAsync(CancellationToken ct = default);
     Task SaveAsync(CancellationToken ct = default);

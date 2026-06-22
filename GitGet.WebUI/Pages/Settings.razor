@@ -57,7 +57,7 @@
             @L.T("settings.cache_desc")
             @if (_cacheSize > 0)
             {
-                <text>（约 @FormatSize(_cacheSize)）</text>
+                <text>（@_cacheSize 条记录）</text>
             }
         </span>
     </div>
@@ -89,14 +89,18 @@
         _cacheSize = await CacheService.GetCacheSizeAsync();
     }
 
-    private void ToggleTheme()
+    private async void ToggleTheme()
     {
         AppState.IsDarkMode = !AppState.IsDarkMode;
+        AppSettings.Theme = AppState.IsDarkMode ? "dark" : "light";
+        await AppSettings.SaveAsync();
     }
 
-    private void AfterLanguageChanged()
+    private async void AfterLanguageChanged()
     {
         L.SetLanguage(_language);
+        AppSettings.Language = _language;
+        await AppSettings.SaveAsync();
     }
 
     private void SelectDownloadPath()

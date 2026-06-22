@@ -11,6 +11,8 @@ public class GitGetSettings : IGitGetSettings
     public string DownloadPath { get; set; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
     public int MaxConcurrentDownloads { get; set; } = 3;
+    public string Theme { get; set; } = "light";
+    public string Language { get; set; } = "zh";
 
     public GitGetSettings()
         : this(Path.Combine(
@@ -37,6 +39,10 @@ public class GitGetSettings : IGitGetSettings
             DownloadPath = data.DownloadPath;
         if (data.MaxConcurrentDownloads is >= 1 and <= 10)
             MaxConcurrentDownloads = data.MaxConcurrentDownloads;
+        if (data.Theme is "light" or "dark")
+            Theme = data.Theme;
+        if (data.Language is "zh" or "en")
+            Language = data.Language;
     }
 
     public async Task SaveAsync(CancellationToken ct = default)
@@ -49,6 +55,8 @@ public class GitGetSettings : IGitGetSettings
         {
             DownloadPath = DownloadPath,
             MaxConcurrentDownloads = MaxConcurrentDownloads,
+            Theme = Theme,
+            Language = Language,
         };
         var json = JsonSerializer.Serialize(data, _jsonOptions);
         await File.WriteAllTextAsync(_filePath, json, ct);
@@ -58,5 +66,7 @@ public class GitGetSettings : IGitGetSettings
     {
         public string DownloadPath { get; set; } = "";
         public int MaxConcurrentDownloads { get; set; } = 3;
+        public string Theme { get; set; } = "light";
+        public string Language { get; set; } = "zh";
     }
 }
