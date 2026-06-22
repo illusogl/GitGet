@@ -61,19 +61,35 @@ appsettings.*.json
 !appsettings.Development.json
 
 # ===== GitGet Specific =====
-# User tokens and credentials
-token.enc
-tokens.json
-secrets.json
+# OAuth reference documentation (not part of the app)
+Oauth/
 
-# Local app data (runtime generated)
-%APPDATA%/GitGet/
+# User tokens and credentials (long-lived + encrypted)
+token.enc
+tokens/
+*.token
+*.enc
+
+# Local app data (runtime generated — SQLite DB, settings, AES-encrypted tokens)
+GitGet/
 *.db
+*.db-shm
+*.db-wal
+
+# Runtime settings
+settings.json
+gitget.db
 
 # Download output (user downloads)
 downloads/
 
-# Configuration with secrets
+# Cache directories and files
+**/node_modules/
+*.cache
+.cache/
+
+# Configuration with secrets (OAuth client_id is in source; secret is NEVER committed)
 appsettings.Secret.json
 client_secret.json
 github_oauth.json
+oauth_*.json

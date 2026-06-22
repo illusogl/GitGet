@@ -1,25 +1,220 @@
 @page "/login"
+@implements IDisposable
+@using GitGet.Core.Interfaces
 @using GitGet.WebUI.Services
+@inject IAuthService AuthService
+@inject AppState AppState
 @inject LocalizationService L
 @inject NavigationManager Navigation
 
 <div class="login-container">
-    <div class="login-card">
-        <h1 class="login-title">@L.T("login.title")</h1>
-        <p class="login-subtitle">@L.T("login.subtitle")</p>
+    <div class="login-card" style="max-width:480px;">
 
-        <div class="login-placeholder">
-            <p>@L.T("login.wip")</p>
-            <p style="margin-top:8px;">@L.T("login.features_desc")</p>
-            <ul style="text-align:left;margin:12px auto 0;max-width:300px;font-size:12px;color:var(--muted);">
-                <li>@L.T("login.feature_star")</li>
-                <li>@L.T("login.feature_rec")</li>
-                <li>@L.T("login.feature_cloud")</li>
-            </ul>
-        </div>
+        @if (!AuthService.IsLoggedIn)
+        {
+            <h1 class="login-title">@L.T("login.title")</h1>
+            <p class="login-subtitle">@L.T("login.subtitle")</p>
 
-        <p class="text-muted" style="font-size:13px;">
-            @L.T("login.offline")
-        </p>
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <div style="background:var(--surface-card);border-radius:var(--radius-md);padding:12px;margin-bottom:16px;">
+                    <p style="color:var(--error);font-size:13px;">@_errorMessage</p>
+                </div>
+            }
+
+            @* Manual token entry method *@
+            <div style="margin-bottom:20px;">
+                <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;color:var(--ink);">
+                    @L.T("login.token_method")
+                </h3>
+                <p style="font-size:12px;color:var(--muted);margin-bottom:8px;line-height:1.5;">
+                    @L.T("login.token_hint")
+                    <a href="https://github.com/settings/tokens/new?scopes=user,repo&description=GitGet" target="_blank" style="color:var(--primary);">@L.T("login.token_link")</a>
+                </p>
+                <div style="display:flex;gap:8px;">
+                    <input class="form-input" style="flex:1;" @bind="_tokenInput" placeholder="ghp_xxxxxxxxxxxx" />
+                    <button class="btn btn-primary" @onclick="LoginWithToken" disabled="@_isLoading">
+                        @if (_isLoading) { @L.T("login.connecting") } else { @L.T("login.token_submit") }
+                    </button>
+                </div>
+            </div>
+
+            <div style="text-align:center;color:var(--muted-soft);font-size:13px;margin:16px 0;">@L.T("login.or")</div>
+
+            @* OAuth Device Flow method *@
+            <button class="btn btn-secondary" style="width:100%;margin-bottom:8px;" @onclick="StartDeviceFlow" disabled="@_isLoading">
+                @L.T("login.device_flow")
+            </button>
+
+            @if (_flowStage == "deviceCode")
+            {
+                <div style="text-align:center;margin-top:16px;padding:16px;background:var(--surface-card);border-radius:var(--radius-md);">
+                    <p style="font-size:13px;margin-bottom:8px;color:var(--muted);">
+                        @L.T("login.step1") @L.T("login.step2")
+                    </p>
+                    <code style="font-family:var(--font-code);font-size:28px;font-weight:700;letter-spacing:6px;color:var(--primary);">@_userCode</code>
+                    <p style="font-size:12px;color:var(--muted-soft);margin-top:8px;">
+                        @L.T("login.enter_code_at")
+                        <a href="@_verificationUri" target="_blank" style="color:var(--primary);">@_verificationUri</a>
+                    </p>
+                    <button class="btn btn-primary btn-sm" style="margin-top:8px;" @onclick="CheckAuth">
+                        @L.T("login.done_auth")
+                    </button>
+                </div>
+            }
+        }
+        else
+        {
+            <h1 class="login-title">@L.T("login.logged_in")</h1>
+            <p class="login-subtitle">@L.T("login.logged_in_desc")</p>
+            <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px;">
+                <button class="btn btn-primary" style="width:100%;" @onclick='() => Navigation.NavigateTo("/")'>
+                    @L.T("nav.home")
+                </button>
+                <button class="btn" style="width:100%;color:var(--error);" @onclick="Logout">
+                    @L.T("login.logout")
+                </button>
+            </div>
+        }
     </div>
 </div>
+
+@code {
+    private string _tokenInput = "";
+    private string _errorMessage = "";
+    private bool _isLoading;
+    private string _flowStage = "";
+    private string _userCode = "";
+    private string _verificationUri = "";
+    private string _deviceCode = "";
+    private int _interval = 5;
+
+    protected override void OnInitialized()
+    {
+        L.OnLanguageChanged += () => InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoginWithToken()
+    {
+        var token = _tokenInput.Trim();
+        if (string.IsNullOrEmpty(token) || !token.StartsWith("ghp_"))
+        {
+            _errorMessage = L.T("login.invalid_token");
+            StateHasChanged();
+            return;
+        }
+
+        _isLoading = true;
+        _errorMessage = "";
+        StateHasChanged();
+
+        try
+        {
+            AuthService.SetToken(token);
+            // Validate the token
+            if (await AuthService.ValidateTokenAsync(token))
+            {
+                AppState.CurrentUserLogin = "github_user";
+                Navigation.NavigateTo("/");
+            }
+            else
+            {
+                AuthService.Logout();
+                _errorMessage = L.T("login.invalid_token");
+            }
+        }
+        catch
+        {
+            AuthService.Logout();
+            _errorMessage = L.T("login.please_retry");
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task StartDeviceFlow()
+    {
+        _isLoading = true;
+        _errorMessage = "";
+        _flowStage = "";
+        StateHasChanged();
+
+        try
+        {
+            var deviceCode = await AuthService.RequestDeviceCodeAsync();
+            _userCode = deviceCode.UserCode;
+            _verificationUri = deviceCode.VerificationUri;
+            _deviceCode = deviceCode.DeviceCode;
+            _interval = Math.Max(deviceCode.Interval, 5);
+            _flowStage = "deviceCode";
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"{L.T("login.error")}: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CheckAuth()
+    {
+        if (string.IsNullOrEmpty(_deviceCode)) return;
+
+        _errorMessage = L.T("login.connecting");
+        StateHasChanged();
+
+        for (int i = 0; i < 5; i++)
+        {
+            try
+            {
+                var (status, token) = await AuthService.PollForTokenAsync(_deviceCode, _interval, default);
+
+                if (status == DeviceFlowStatus.Authorized)
+                {
+                    AppState.CurrentUserLogin = "github_user";
+                    Navigation.NavigateTo("/");
+                    return;
+                }
+
+                if (status != DeviceFlowStatus.Pending)
+                {
+                    _errorMessage = status switch
+                    {
+                        DeviceFlowStatus.Expired => L.T("login.expired"),
+                        DeviceFlowStatus.Denied => L.T("login.denied"),
+                        _ => L.T("login.unknown_error"),
+                    };
+                    StateHasChanged();
+                    return;
+                }
+            }
+            catch
+            {
+                _errorMessage = L.T("login.please_retry");
+                StateHasChanged();
+                return;
+            }
+        }
+
+        _errorMessage = L.T("login.still_pending");
+        StateHasChanged();
+    }
+
+    private void Logout()
+    {
+        AuthService.Logout();
+        AppState.CurrentUserLogin = null;
+        _flowStage = "";
+    }
+
+    public void Dispose()
+    {
+        L.OnLanguageChanged -= () => InvokeAsync(StateHasChanged);
+    }
+}

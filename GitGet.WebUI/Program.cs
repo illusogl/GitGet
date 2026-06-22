@@ -1,4 +1,4 @@
-using System.Diagnostics;
+ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using GitGet.Core.Data;
@@ -70,6 +70,16 @@ class Program
                 .AddSingleton<IGitHubApiClient>(sp => new GitHubApiClient(sp.GetRequiredService<INodeScriptRunner>()))
                 .AddSingleton<ITrendingService, TrendingService>()
                 .AddSingleton<IGitGetSettings, GitGetSettings>()
+                .AddSingleton<IAuthService>(sp =>
+                {
+                    var client = new HttpClient
+                    {
+                        Timeout = TimeSpan.FromSeconds(15)
+                    };
+                    return new AuthService(
+                        client,
+                        sp.GetRequiredService<ISecureDataStore>());
+                })
                 .AddSingleton<IDownloadService>(sp =>
                 {
                     var client = new HttpClient
@@ -101,6 +111,15 @@ class Program
 
             var localization = app.Services.GetRequiredService<LocalizationService>();
             localization.SetLanguage(settings.Language);
+
+            // Restore persisted OAuth token
+            var authService = app.Services.GetRequiredService<IAuthService>();
+            var restored = authService.TryRestoreTokenAsync().GetAwaiter().GetResult();
+            Log.Info($"OAuth Token 恢复: {(restored ? "成功" : "未找到已保存的 token")}");
+            if (restored)
+            {
+                appState.CurrentUserLogin = "github_user";
+            }
 
             if (app.MainWindow == null)
             {

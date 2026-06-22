@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <Content Include="..\scripts\github-api.js" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\scripts\github-oauth.js" CopyToOutputDirectory="PreserveNewest" />
     <Content Update="wwwroot\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
