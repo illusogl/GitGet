@@ -49,6 +49,7 @@ public class LocalizationService
         ["search.no_results_desc"] = "尝试更换关键词或检查网络连接",
         ["search.result_count"] = "找到约 {0} 个结果",
 
+        ["detail.back"] = "返回",
         ["detail.not_selected"] = "未选择项目",
         ["detail.not_selected_desc"] = "请先从首页或搜索页选择一个项目",
         ["detail.back_home"] = "返回首页",
@@ -150,6 +151,7 @@ public class LocalizationService
         ["search.no_results_desc"] = "Try different keywords or check your network",
         ["search.result_count"] = "About {0} results",
 
+        ["detail.back"] = "Back",
         ["detail.not_selected"] = "No Project Selected",
         ["detail.not_selected_desc"] = "Please select a project from the home or search page",
         ["detail.back_home"] = "Back to Home",

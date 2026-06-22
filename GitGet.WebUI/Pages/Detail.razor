@@ -27,6 +27,11 @@
 
 <div class="detail-layout">
 
+    @* ===== 返回上一页 ===== *@
+    <button class="back-btn" @onclick="GoBack">
+        <span style="font-size:16px;margin-right:4px;">←</span> @L.T("detail.back")
+    </button>
+
     <div class="detail-info-card">
         <div class="detail-title">
             <a href="https://github.com/@repo.FullName" target="_blank">@repo.FullName</a>
@@ -212,6 +217,11 @@
         var releasesTask = LoadReleases();
 
         await Task.WhenAll(readmeTask, releasesTask);
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/");
     }
 
     private void SwitchTab(string tab)

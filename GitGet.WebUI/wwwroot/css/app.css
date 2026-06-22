@@ -392,6 +392,22 @@ html, body {
   gap: var(--sp-lg);
 }
 
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  background: transparent;
+  border: none;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  padding: var(--sp-xs) 0;
+  transition: color 0.15s ease;
+  width: fit-content;
+}
+.back-btn:hover { color: var(--primary); }
+
 /* Tab switcher */
 .detail-tabs {
   display: flex;

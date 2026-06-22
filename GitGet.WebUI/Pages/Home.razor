@@ -18,7 +18,7 @@
     <button class="time-tab @(_timeRange == "all" ? "time-tab-active" : "")" @onclick="SwitchToAll">@L.T("home.all")</button>
 </div>
 
-@if (_isLoading)
+@if (_isLoading && _repos.Count == 0)
 {
     <div class="loading">@L.T("home.loading")</div>
 }
@@ -37,12 +37,33 @@ else
             <ProjectCard Repo="repo" OnClick="() => GoToDetail(repo)" L="L" />
         }
     </div>
+
+    @if (_hasMore)
+    {
+        <div style="text-align:center;padding:var(--sp-xl) 0;">
+            @if (_isLoadingMore)
+            {
+                <span style="color:var(--muted);">@L.T("home.loading")</span>
+            }
+            else
+            {
+                <button class="btn" @onclick="LoadMore">加载更多</button>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="text-muted" style="text-align:center;padding:var(--sp-lg);">— 已显示全部结果 —</div>
+    }
 }
 
 @code {
     private List<Repository> _repos = new();
     private bool _isLoading = true;
+    private bool _isLoadingMore;
     private string _timeRange = "all";
+    private int _currentPage = 1;
+    private bool _hasMore = true;
 
     protected override void OnInitialized()
     {
@@ -63,16 +84,22 @@ else
     {
         if (_timeRange == range) return;
         _timeRange = range;
+        _currentPage = 1;
+        _hasMore = true;
         await LoadTrending();
     }
 
     private async Task LoadTrending()
     {
         _isLoading = true;
+        _repos.Clear();
         StateHasChanged();
         try
         {
-            _repos = await TrendingService.GetTrendingReposAsync(_timeRange, perPage: 20);
+            var repos = await TrendingService.GetTrendingReposAsync(_timeRange, perPage: 30);
+            _repos = repos;
+            _hasMore = repos.Count >= 30;
+            _currentPage = 1;
         }
         catch (Exception ex)
         {
@@ -81,6 +108,27 @@ else
         finally
         {
             _isLoading = false;
+        }
+    }
+
+    private async Task LoadMore()
+    {
+        _isLoadingMore = true;
+        StateHasChanged();
+        try
+        {
+            _currentPage++;
+            var repos = await TrendingService.GetTrendingReposAsync(_timeRange, page: _currentPage, perPage: 30);
+            _hasMore = repos.Count >= 30;
+            _repos.AddRange(repos);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"加载更多失败: {ex.Message}");
+        }
+        finally
+        {
+            _isLoadingMore = false;
         }
     }
 
