@@ -132,6 +132,7 @@ public class AuthService : IAuthService
     public void SetToken(string token)
     {
         _accessToken = token;
+        _ = _secureStore.SaveTokenAsync(TokenKey, token);
     }
 
     public void Logout()

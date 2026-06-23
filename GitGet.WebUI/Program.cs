@@ -119,6 +119,9 @@ class Program
             if (restored)
             {
                 appState.CurrentUserLogin = "github_user";
+                var githubClient = app.Services.GetRequiredService<IGitHubApiClient>();
+                githubClient.SetAccessToken(authService.AccessToken);
+                Log.Info("已恢复的 token 同步到 GitHubApiClient");
             }
 
             if (app.MainWindow == null)
