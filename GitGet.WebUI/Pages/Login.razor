@@ -85,21 +85,24 @@ else
                 <img class="profile-avatar" src="@_user.AvatarUrl" alt="@_user.Login" />
             }
             <div class="profile-info">
-                <div class="profile-name">@(_user?.Name ?? _user?.Login ?? "GitHub User")</div>
-                <div class="profile-login">
-                    <a href="https://github.com/@_user?.Login" target="_blank" style="color:var(--primary);text-decoration:none;">
-                        @_user.Login
-                    </a>
-                </div>
-                @if (!string.IsNullOrEmpty(_user?.Bio))
+                @if (_user != null)
                 {
-                    <div class="profile-bio">@_user.Bio</div>
+                    <div class="profile-name">@(_user.Name ?? _user.Login ?? "GitHub User")</div>
+                    <div class="profile-login">
+                        <a href="https://github.com/@_user.Login" target="_blank" style="color:var(--primary);text-decoration:none;">
+                            @_user.Login
+                        </a>
+                    </div>
+                    @if (!string.IsNullOrEmpty(_user.Bio))
+                    {
+                        <div class="profile-bio">@_user.Bio</div>
+                    }
+                    <div class="profile-stats">
+                        <span>@L.T("login.followers"): @(_user.Followers)</span>
+                        <span>@L.T("login.following"): @(_user.Following)</span>
+                        <span>@L.T("login.repos"): @(_user.PublicRepos)</span>
+                    </div>
                 }
-                <div class="profile-stats">
-                    <span>@L.T("login.followers"): @(_user?.Followers ?? 0)</span>
-                    <span>@L.T("login.following"): @(_user?.Following ?? 0)</span>
-                    <span>@L.T("login.repos"): @(_user?.PublicRepos ?? 0)</span>
-                </div>
             </div>
             <div style="margin-left:auto;">
                 <button class="btn" style="color:var(--error);border-color:var(--error);" @onclick="Logout">
