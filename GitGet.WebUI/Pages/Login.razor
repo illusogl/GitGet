@@ -1,17 +1,19 @@
 @page "/login"
 @implements IDisposable
+@using GitGet.Core.Models
 @using GitGet.Core.Interfaces
 @using GitGet.WebUI.Services
 @inject IAuthService AuthService
+@inject IGitHubApiClient GitHubClient
 @inject AppState AppState
 @inject LocalizationService L
 @inject NavigationManager Navigation
 
-<div class="login-container">
-    <div class="login-card" style="max-width:480px;">
-
-        @if (!AuthService.IsLoggedIn)
-        {
+@if (!AuthService.IsLoggedIn)
+{
+    @* ===== Not logged in: Login form ===== *@
+    <div class="login-container">
+        <div class="login-card" style="max-width:480px;">
             <h1 class="login-title">@L.T("login.title")</h1>
             <p class="login-subtitle">@L.T("login.subtitle")</p>
 
@@ -22,7 +24,6 @@
                 </div>
             }
 
-            @* Manual token entry method *@
             <div style="margin-bottom:20px;">
                 <h3 style="font-size:14px;font-weight:600;margin-bottom:8px;color:var(--ink);">
                     @L.T("login.token_method")
@@ -41,7 +42,6 @@
 
             <div style="text-align:center;color:var(--muted-soft);font-size:13px;margin:16px 0;">@L.T("login.or")</div>
 
-            @* OAuth Device Flow method *@
             <button class="btn btn-secondary" style="width:100%;margin-bottom:8px;" @onclick="StartDeviceFlow" disabled="@_isLoading">
                 @L.T("login.device_flow")
             </button>
@@ -62,24 +62,138 @@
                     </button>
                 </div>
             }
-        }
-        else
-        {
-            <h1 class="login-title">@L.T("login.logged_in")</h1>
-            <p class="login-subtitle">@L.T("login.logged_in_desc")</p>
-            <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px;">
-                <button class="btn btn-primary" style="width:100%;" @onclick='() => Navigation.NavigateTo("/")'>
-                    @L.T("nav.home")
-                </button>
-                <button class="btn" style="width:100%;color:var(--error);" @onclick="Logout">
+        </div>
+    </div>
+}
+else
+{
+    @* ===== Logged in: Profile page ===== *@
+    <div class="page-header" style="margin-bottom:var(--sp-xl);">
+        <h1 class="page-title">@L.T("login.profile")</h1>
+    </div>
+
+    @if (_profileLoading)
+    {
+        <div class="loading">@L.T("home.loading")</div>
+    }
+    else
+    {
+        @* User info card *@
+        <div class="profile-header">
+            @if (!string.IsNullOrEmpty(_user?.AvatarUrl))
+            {
+                <img class="profile-avatar" src="@_user.AvatarUrl" alt="@_user.Login" />
+            }
+            <div class="profile-info">
+                <div class="profile-name">@(_user?.Name ?? _user?.Login ?? "GitHub User")</div>
+                <div class="profile-login">
+                    <a href="https://github.com/@_user?.Login" target="_blank" style="color:var(--primary);text-decoration:none;">
+                        @_user.Login
+                    </a>
+                </div>
+                @if (!string.IsNullOrEmpty(_user?.Bio))
+                {
+                    <div class="profile-bio">@_user.Bio</div>
+                }
+                <div class="profile-stats">
+                    <span>@L.T("login.followers"): @(_user?.Followers ?? 0)</span>
+                    <span>@L.T("login.following"): @(_user?.Following ?? 0)</span>
+                    <span>@L.T("login.repos"): @(_user?.PublicRepos ?? 0)</span>
+                </div>
+            </div>
+            <div style="margin-left:auto;">
+                <button class="btn" style="color:var(--error);border-color:var(--error);" @onclick="Logout">
                     @L.T("login.logout")
                 </button>
             </div>
-        }
-    </div>
-</div>
+        </div>
+
+        @* Two-column: My Repos + Starred Repos *@
+        <div class="profile-grid">
+            @* My Repos *@
+            <div class="profile-section">
+                <h3 class="profile-section-title">
+                    @L.T("login.my_repos")
+                    @if (_repos.Count > 0)
+                    {
+                        <span style="font-size:13px;font-weight:400;color:var(--muted);">(@_repos.Count)</span>
+                    }
+                </h3>
+                @if (_reposLoading)
+                {
+                    <p class="text-muted" style="padding:16px;">@L.T("home.loading")</p>
+                }
+                else if (_repos.Count == 0)
+                {
+                    <p class="text-muted" style="padding:16px;">@L.T("login.no_repos")</p>
+                }
+                else
+                {
+                    <div class="profile-repo-list">
+                        @foreach (var repo in _repos.Take(20))
+                        {
+                            <div class="profile-repo-item" @onclick="() => GoToRepo(repo)">
+                                <span class="profile-repo-name">@repo.FullName</span>
+                                <div style="display:flex;align-items:center;gap:12px;font-size:12px;color:var(--muted-soft);">
+                                    @if (!string.IsNullOrEmpty(repo.Language))
+                                    {
+                                        <span style="display:flex;align-items:center;gap:4px;">
+                                            <span class="language-dot" style="background-color:@GetLanguageColor(repo.Language)"></span> @repo.Language
+                                        </span>
+                                    }
+                                    <span>⭐ @FormatNumber(repo.Stars)</span>
+                                    <span>⑂ @FormatNumber(repo.Forks)</span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            @* Starred Repos *@
+            <div class="profile-section">
+                <h3 class="profile-section-title">
+                    @L.T("login.starred")
+                    @if (_starred.Count > 0)
+                    {
+                        <span style="font-size:13px;font-weight:400;color:var(--muted);">(@_starred.Count)</span>
+                    }
+                </h3>
+                @if (_starredLoading)
+                {
+                    <p class="text-muted" style="padding:16px;">@L.T("home.loading")</p>
+                }
+                else if (_starred.Count == 0)
+                {
+                    <p class="text-muted" style="padding:16px;">@L.T("login.no_starred")</p>
+                }
+                else
+                {
+                    <div class="profile-repo-list">
+                        @foreach (var repo in _starred.Take(20))
+                        {
+                            <div class="profile-repo-item" @onclick="() => GoToRepo(repo)">
+                                <span class="profile-repo-name">@repo.FullName</span>
+                                <div style="display:flex;align-items:center;gap:12px;font-size:12px;color:var(--muted-soft);">
+                                    @if (!string.IsNullOrEmpty(repo.Language))
+                                    {
+                                        <span style="display:flex;align-items:center;gap:4px;">
+                                            <span class="language-dot" style="background-color:@GetLanguageColor(repo.Language)"></span> @repo.Language
+                                        </span>
+                                    }
+                                    <span>⭐ @FormatNumber(repo.Stars)</span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    }
+}
 
 @code {
+    // Login state
     private string _tokenInput = "";
     private string _errorMessage = "";
     private bool _isLoading;
@@ -89,9 +203,88 @@
     private string _deviceCode = "";
     private int _interval = 5;
 
-    protected override void OnInitialized()
+    // Profile state
+    private GitHubUser? _user;
+    private List<Repository> _repos = new();
+    private List<Repository> _starred = new();
+    private bool _profileLoading = true;
+    private bool _reposLoading = true;
+    private bool _starredLoading = true;
+
+    protected override async Task OnInitializedAsync()
     {
         L.OnLanguageChanged += () => InvokeAsync(StateHasChanged);
+        if (AuthService.IsLoggedIn)
+        {
+            await LoadProfile();
+        }
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender && AuthService.IsLoggedIn && _profileLoading)
+        {
+            _ = LoadProfile();
+        }
+    }
+
+    private async Task LoadProfile()
+    {
+        _profileLoading = true;
+        try
+        {
+            _user = await GitHubClient.GetUserAsync();
+
+            // Load repos and starred in parallel
+            var reposTask = LoadMyRepos();
+            var starredTask = LoadStarred();
+            await Task.WhenAll(reposTask, starredTask);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load profile: {ex.Message}";
+        }
+        finally
+        {
+            _profileLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadMyRepos()
+    {
+        _reposLoading = true;
+        try
+        {
+            if (!string.IsNullOrEmpty(_user?.Login))
+            {
+                var results = await GitHubClient.SearchRepositoriesAsync($"user:{_user.Login}", sort: "updated", perPage: 20);
+                _repos = results;
+            }
+        }
+        catch { }
+        finally
+        {
+            _reposLoading = false;
+        }
+    }
+
+    private async Task LoadStarred()
+    {
+        _starredLoading = true;
+        try
+        {
+            if (!string.IsNullOrEmpty(_user?.Login))
+            {
+                var results = await GitHubClient.GetStarredReposAsync(_user.Login, perPage: 20);
+                _starred = results;
+            }
+        }
+        catch { }
+        finally
+        {
+            _starredLoading = false;
+        }
     }
 
     private async Task LoginWithToken()
@@ -110,12 +303,13 @@
 
         try
         {
-            AuthService.SetToken(token);
-            // Validate the token
-            if (await AuthService.ValidateTokenAsync(token))
+            var accessToken = token; // capture before pass
+            AuthService.SetToken(accessToken);
+            GitHubClient.SetAccessToken(accessToken);
+            if (await AuthService.ValidateTokenAsync(accessToken))
             {
                 AppState.CurrentUserLogin = "github_user";
-                Navigation.NavigateTo("/");
+                await LoadProfile();
             }
             else
             {
@@ -165,7 +359,6 @@
     private async Task CheckAuth()
     {
         if (string.IsNullOrEmpty(_deviceCode)) return;
-
         _errorMessage = L.T("login.connecting");
         StateHasChanged();
 
@@ -174,14 +367,13 @@
             try
             {
                 var (status, token) = await AuthService.PollForTokenAsync(_deviceCode, _interval, default);
-
-                if (status == DeviceFlowStatus.Authorized)
+                if (status == DeviceFlowStatus.Authorized && token != null)
                 {
+                    GitHubClient.SetAccessToken(token.AccessToken);
                     AppState.CurrentUserLogin = "github_user";
-                    Navigation.NavigateTo("/");
+                    await LoadProfile();
                     return;
                 }
-
                 if (status != DeviceFlowStatus.Pending)
                 {
                     _errorMessage = status switch
@@ -201,17 +393,35 @@
                 return;
             }
         }
-
         _errorMessage = L.T("login.still_pending");
         StateHasChanged();
+    }
+
+    private void GoToRepo(Repository repo)
+    {
+        AppState.SelectedRepository = repo;
+        Navigation.NavigateTo("/detail");
     }
 
     private void Logout()
     {
         AuthService.Logout();
         AppState.CurrentUserLogin = null;
+        _user = null;
+        _repos.Clear();
+        _starred.Clear();
         _flowStage = "";
     }
+
+    private static string FormatNumber(int n) => n >= 1000 ? $"{(n / 1000.0):F1}k" : n.ToString();
+
+    private static string GetLanguageColor(string lang) => lang.ToLower() switch
+    {
+        "c#" => "#178600", "python" => "#3572A5", "javascript" => "#f1e05a", "typescript" => "#3178c6",
+        "java" => "#b07219", "go" => "#00ADD8", "rust" => "#dea584", "c++" => "#f34b7d",
+        "c" => "#555555", "html" => "#e34c26", "css" => "#563d7c", "shell" => "#89e051",
+        "ruby" => "#701516", "swift" => "#ffac45", "kotlin" => "#A97BFF", _ => "#8b949e"
+    };
 
     public void Dispose()
     {

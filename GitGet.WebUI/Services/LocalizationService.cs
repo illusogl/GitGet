@@ -104,6 +104,15 @@ public class LocalizationService
         ["settings.about_desc"] = "GitHub Release 应用商店客户端",
         ["settings.tech_stack"] = "技术栈：C# + .NET 9 + Blazor + Photino",
 
+        ["login.profile"] = "个人主页",
+        ["login.followers"] = "关注者",
+        ["login.following"] = "正在关注",
+        ["login.repos"] = "公开仓库",
+        ["login.my_repos"] = "我的仓库",
+        ["login.starred"] = "星标项目",
+        ["login.no_repos"] = "暂无仓库",
+        ["login.no_starred"] = "暂无星标项目",
+
         ["login.title"] = "登录 GitGet",
         ["login.subtitle"] = "连接你的 GitHub 账户以获得个性化体验",
         ["login.token_method"] = "使用 Personal Access Token",
@@ -237,6 +246,15 @@ public class LocalizationService
         ["settings.about_section"] = "About",
         ["settings.about_desc"] = "GitHub Release App Store Client",
         ["settings.tech_stack"] = "Tech Stack: C# + .NET 9 + Blazor + Photino",
+
+        ["login.profile"] = "Profile",
+        ["login.followers"] = "Followers",
+        ["login.following"] = "Following",
+        ["login.repos"] = "Public Repos",
+        ["login.my_repos"] = "My Repositories",
+        ["login.starred"] = "Starred",
+        ["login.no_repos"] = "No repositories",
+        ["login.no_starred"] = "No starred projects",
 
         ["login.title"] = "Login to GitGet",
         ["login.subtitle"] = "Connect your GitHub account for a personalized experience",

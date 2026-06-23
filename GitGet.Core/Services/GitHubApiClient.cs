@@ -8,6 +8,7 @@ namespace GitGet.Core.Services;
 public class GitHubApiClient : IGitHubApiClient
 {
     private readonly INodeScriptRunner _scriptRunner;
+    private string _accessToken = "";
 
     public int RemainingRateLimit { get; private set; } = 60;
     public DateTime? RateLimitResetAt { get; private set; }
@@ -17,13 +18,18 @@ public class GitHubApiClient : IGitHubApiClient
         _scriptRunner = scriptRunner;
     }
 
+    public void SetAccessToken(string? token)
+    {
+        _accessToken = token ?? "";
+    }
+
     public async Task<List<Repository>> SearchRepositoriesAsync(
         string query, string? language = null, string sort = "stars",
         int page = 1, int perPage = 20, CancellationToken ct = default)
     {
         var q = language != null ? $"{query}+language:{language}" : query;
         var args = new[] { "GET", "/search/repositories",
-            JsonSerializer.Serialize(new { q, sort, order = "desc", page, per_page = perPage }), "" };
+            JsonSerializer.Serialize(new { q, sort, order = "desc", page, per_page = perPage }), _accessToken };
 
         try
         {
@@ -42,7 +48,7 @@ public class GitHubApiClient : IGitHubApiClient
 
     public async Task<Repository?> GetRepositoryAsync(string owner, string repo, CancellationToken ct = default)
     {
-        var args = new[] { "GET", $"/repos/{owner}/{repo}", "{}", "" };
+        var args = new[] { "GET", $"/repos/{owner}/{repo}", "{}", _accessToken };
 
         try
         {
@@ -61,7 +67,7 @@ public class GitHubApiClient : IGitHubApiClient
         string owner, string repo, int page = 1, int perPage = 30, CancellationToken ct = default)
     {
         var args = new[] { "GET", $"/repos/{owner}/{repo}/releases",
-            JsonSerializer.Serialize(new { page, per_page = perPage }), "" };
+            JsonSerializer.Serialize(new { page, per_page = perPage }), _accessToken };
 
         try
         {
@@ -86,7 +92,7 @@ public class GitHubApiClient : IGitHubApiClient
         string username, int page = 1, int perPage = 50, CancellationToken ct = default)
     {
         var args = new[] { "GET", $"/users/{username}/starred",
-            JsonSerializer.Serialize(new { page, per_page = perPage }), "" };
+            JsonSerializer.Serialize(new { page, per_page = perPage }), _accessToken };
 
         try
         {
@@ -109,7 +115,7 @@ public class GitHubApiClient : IGitHubApiClient
 
     public async Task<string?> GetReadmeContentAsync(string owner, string repo, CancellationToken ct = default)
     {
-        var args = new[] { "GET", $"/repos/{owner}/{repo}/readme", "{}", "" };
+        var args = new[] { "GET", $"/repos/{owner}/{repo}/readme", "{}", _accessToken };
 
         try
         {
@@ -142,7 +148,7 @@ public class GitHubApiClient : IGitHubApiClient
 
     public async Task<GitHubUser?> GetUserAsync(CancellationToken ct = default)
     {
-        var args = new[] { "GET", "/user", "{}", "" };
+        var args = new[] { "GET", "/user", "{}", _accessToken };
 
         try
         {
