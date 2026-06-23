@@ -44,7 +44,7 @@
 
 ### 下载 v1.0
 
-👉 **[下载 GitGet.WebUI.exe](../../releases/tag/v1.0)**
+👉 **[下载 GitGet.WebUI.exe](../../releases/tag/1.0)**
 
 双击运行。单文件自包含，内置 .NET 运行时，无需安装任何依赖。
 
