@@ -1,4 +1,4 @@
-[![GitGet Logo](ScreenShot/favicon.ico)](https://github.com/illusogl/GitGet)
+[![GitGet Logo](ScreenShot/logo.jpg)](https://github.com/illusogl/GitGet)
 
 [![.NET 9.0](https://img.shields.io/badge/.NET-9.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 [![Blazor](https://img.shields.io/badge/Blazor-512BD4?logo=blazor&logoColor=white)](https://dotnet.microsoft.com/apps/aspnet/web-apps/blazor)
