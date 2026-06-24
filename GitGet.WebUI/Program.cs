@@ -1,5 +1,6 @@
  using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Windows.Forms;
 using System.Text.Json;
 using GitGet.Core.Data;
 using GitGet.Core.Interfaces;
@@ -196,7 +197,14 @@ class Program
 
     static void WaitExit()
     {
-        Console.WriteLine("\n按任意键退出...");
-        try { Console.ReadKey(true); } catch { }
+        try
+        {
+            MessageBox.Show(
+                "GitGet 启动失败，请查看日志文件获取详细信息:\n" + Log.LogPath,
+                "GitGet 启动错误",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+        }
+        catch { }
     }
 }
