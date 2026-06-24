@@ -86,7 +86,7 @@ class Program
                     {
                         Timeout = TimeSpan.FromMinutes(10)
                     };
-                    client.DefaultRequestHeaders.Add("User-Agent", "GitGet-WebUI/1.0");
+                    client.DefaultRequestHeaders.Add("User-Agent", "GitGet-WebUI/1.1");
                     return new DownloadService(
                         client,
                         sp.GetRequiredService<ILocalDataStore>(),
@@ -133,7 +133,20 @@ class Program
             }
             Log.Info("MainWindow 已创建");
 
-            app.MainWindow.SetTitle("GitGet");
+            app.MainWindow.SetTitle("GitGet v1.1");
+
+            // Set window icon (favicon.ico from wwwroot)
+            var iconPath = Path.Combine(AppContext.BaseDirectory, "wwwroot", "ScreenShot", "favicon.ico");
+            if (File.Exists(iconPath))
+            {
+                app.MainWindow.SetIconFile(iconPath);
+                Log.Info($"窗口图标已设置: {iconPath}");
+            }
+            else
+            {
+                Log.Info($"窗口图标文件不存在: {iconPath}");
+            }
+
             app.MainWindow.SetWidth(1280);
             app.MainWindow.SetHeight(800);
 

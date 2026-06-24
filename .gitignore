@@ -64,6 +64,13 @@ appsettings.*.json
 # OAuth reference documentation (not part of the app)
 Oauth/
 
+# Documentation and reports
+报告/
+报告md/
+
+# Published releases
+publish/
+
 # User tokens and credentials (long-lived + encrypted)
 token.enc
 tokens/

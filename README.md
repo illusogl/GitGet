@@ -1,10 +1,10 @@
-[![GitGet Logo](https://github.com/illusogl/GitGet/assets/logo-placeholder)](https://github.com/illusogl/GitGet)
+[![GitGet Logo](ScreenShot/favicon.ico)](https://github.com/illusogl/GitGet)
 
 [![.NET 9.0](https://img.shields.io/badge/.NET-9.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 [![Blazor](https://img.shields.io/badge/Blazor-512BD4?logo=blazor&logoColor=white)](https://dotnet.microsoft.com/apps/aspnet/web-apps/blazor)
 [![Tests](https://img.shields.io/badge/tests-54%20passed-brightgreen)](https://github.com/illusogl/GitGet/actions)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![Release](https://img.shields.io/badge/release-v1.0-cc785c)](../../releases)
+[![Release](https://img.shields.io/badge/release-v1.1-cc785c)](../../releases)
 
 ```text
   ██████╗ ██╗████████╗ ██████╗ ███████╗████████╗
@@ -42,9 +42,9 @@
 
 ## /🚀 快速开始
 
-### 下载 v1.0
+### 下载 v1.1
 
-👉 **[下载 GitGet.WebUI.exe](../../releases/tag/1.0)**
+👉 **[下载 GitGet.WebUI.exe](../../releases/tag/1.1)**
 
 双击运行。单文件自包含，内置 .NET 运行时，无需安装任何依赖。
 
