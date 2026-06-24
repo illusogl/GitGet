@@ -1,21 +1,10 @@
-[![GitGet Logo](ScreenShot/favicon.ico)](https://github.com/illusogl/GitGet)
+[![GitGet Logo](ScreenShot/logo.jpg)](https://github.com/illusogl/GitGet)
 
 [![.NET 9.0](https://img.shields.io/badge/.NET-9.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 [![Blazor](https://img.shields.io/badge/Blazor-512BD4?logo=blazor&logoColor=white)](https://dotnet.microsoft.com/apps/aspnet/web-apps/blazor)
 [![Tests](https://img.shields.io/badge/tests-54%20passed-brightgreen)](https://github.com/illusogl/GitGet/actions)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Release](https://img.shields.io/badge/release-v1.1-cc785c)](../../releases)
-
-```text
-  ██████╗ ██╗████████╗ ██████╗ ███████╗████████╗
- ██╔════╝ ██║╚══██╔══╝██╔════╝ ██╔════╝╚══██╔══╝
- ██║  ███╗██║   ██║   ██║  ███╗█████╗     ██║
- ██║   ██║██║   ██║   ██║   ██║██╔══╝     ██║
- ╚██████╔╝██║   ██║   ╚██████╔╝███████╗   ██║
-  ╚═════╝ ╚═╝   ╚═╝    ╚═════╝ ╚══════╝   ╚═╝
-
-     GitHub Release 桌面应用商店
-```
 
 > **GitGet** 把 GitHub 变成应用商店。无需 Git 命令、无需解压编译，浏览开源项目，一键下载 Release 文件。
 
@@ -47,6 +36,8 @@
 👉 **[下载 GitGet.WebUI.exe](../../releases/tag/1.1)**
 
 双击运行。单文件自包含，内置 .NET 运行时，无需安装任何依赖。
+
+> ⚠️ **Windows 可能会提示"发布了未知发布者"或 SmartScreen 阻止运行** — 这是因为程序未使用付费代码签名证书。点击 **"更多信息"** → **"仍要运行"** 即可。（或者从下方从源码构建，完全开源可审查。）
 
 > 仅支持 **Windows 10+ x64**。需要 [Edge WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/)。
 
